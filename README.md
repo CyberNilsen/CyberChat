@@ -71,8 +71,6 @@ CyberChat is an open-source, privacy-focused chat application designed for secur
 - Clients connect using the server's public IP address
 - Secure communication over internet connection
 
-```
-
 ## 🔧 Development Status
 
 ⚠️ **Early Development**: This project is currently in active development. Core features are being implemented and the application is not yet ready for production use.
