@@ -6,26 +6,474 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>1000</width>
+    <height>666</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>CyberChat - Secure Anonymous Messaging</string>
   </property>
-  <widget class="QWidget" name="centralwidget"/>
+  <property name="styleSheet">
+   <string>QMainWindow {
+    background-color: #1e1e1e;
+    color: #ffffff;
+}
+
+QWidget {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+/* Chat Area Styling */
+QTextEdit {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 14px;
+    color: #ffffff;
+}
+
+QTextEdit:focus {
+    border: 2px solid #00d4aa;
+}
+
+/* Input Field Styling */
+QLineEdit {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #ffffff;
+}
+
+QLineEdit:focus {
+    border: 2px solid #00d4aa;
+    background-color: #363636;
+}
+
+/* Button Styling */
+QPushButton {
+    background-color: #00d4aa;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+QPushButton:hover {
+    background-color: #00b894;
+}
+
+QPushButton:pressed {
+    background-color: #00a085;
+}
+
+QPushButton#disconnectButton {
+    background-color: #e74c3c;
+}
+
+QPushButton#disconnectButton:hover {
+    background-color: #c0392b;
+}
+
+/* List Widget Styling */
+QListWidget {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    padding: 5px;
+}
+
+QListWidget::item {
+    padding: 8px;
+    border-radius: 4px;
+    margin: 2px;
+}
+
+QListWidget::item:selected {
+    background-color: #00d4aa;
+    color: #ffffff;
+}
+
+QListWidget::item:hover {
+    background-color: #404040;
+}
+
+/* Label Styling */
+QLabel {
+    color: #ffffff;
+    font-size: 14px;
+}
+
+QLabel#titleLabel {
+    font-size: 18px;
+    font-weight: bold;
+    color: #00d4aa;
+}
+
+/* Status Bar Styling */
+QStatusBar {
+    background-color: #2d2d2d;
+    border-top: 1px solid #404040;
+    color: #ffffff;
+}
+
+/* Group Box Styling */
+QGroupBox {
+    border: 1px solid #404040;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    font-weight: bold;
+    color: #00d4aa;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+}</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout_main">
+    <property name="spacing">
+     <number>10</number>
+    </property>
+    <property name="leftMargin">
+     <number>10</number>
+    </property>
+    <property name="topMargin">
+     <number>10</number>
+    </property>
+    <property name="rightMargin">
+     <number>10</number>
+    </property>
+    <property name="bottomMargin">
+     <number>10</number>
+    </property>
+    <item>
+     <widget class="QWidget" name="leftPanel" native="true">
+      <property name="maximumSize">
+       <size>
+        <width>280</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_left">
+       <item>
+        <widget class="QLabel" name="titleLabel">
+         <property name="text">
+          <string>🔒 CyberChat</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="connectionGroup">
+         <property name="title">
+          <string>Connection</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_connection">
+          <item>
+           <widget class="QLabel" name="modeLabel">
+            <property name="text">
+             <string>Mode:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="modeComboBox">
+            <property name="styleSheet">
+             <string>QComboBox {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    border-radius: 6px;
+    padding: 8px;
+    color: #ffffff;
+}
+
+QComboBox::drop-down {
+    border: none;
+}
+
+QComboBox::down-arrow {
+    image: url(:/icons/arrow_down.png);
+    width: 12px;
+    height: 12px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    selection-background-color: #00d4aa;
+}</string>
+            </property>
+            <item>
+             <property name="text">
+              <string>LAN Mode</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>WAN Mode (Server)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>WAN Mode (Client)</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ipLabel">
+            <property name="text">
+             <string>IP Address:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="ipLineEdit">
+            <property name="placeholderText">
+             <string>Enter IP address...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="portLabel">
+            <property name="text">
+             <string>Port:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="portLineEdit">
+            <property name="text">
+             <string>8080</string>
+            </property>
+            <property name="placeholderText">
+             <string>Port number</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="connectionButtonsLayout">
+            <item>
+             <widget class="QPushButton" name="connectButton">
+              <property name="text">
+               <string>Connect</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="disconnectButton">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Disconnect</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="usersGroup">
+         <property name="title">
+          <string>Connected Users</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_users">
+          <item>
+           <widget class="QListWidget" name="usersListWidget">
+            <property name="alternatingRowColors">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QWidget" name="chatPanel" native="true">
+      <layout class="QVBoxLayout" name="verticalLayout_chat">
+       <item>
+        <widget class="QLabel" name="chatHeaderLabel">
+         <property name="styleSheet">
+          <string>font-size: 16px; font-weight: bold; color: #00d4aa; padding: 5px;</string>
+         </property>
+         <property name="text">
+          <string>💬 Secure Chat Room</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTextEdit" name="chatDisplayTextEdit">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="placeholderText">
+          <string>Welcome to CyberChat! Connect to start secure messaging...</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QWidget" name="messageInputWidget" native="true">
+         <layout class="QHBoxLayout" name="horizontalLayout_input">
+          <property name="spacing">
+           <number>10</number>
+          </property>
+          <item>
+           <widget class="QLineEdit" name="messageLineEdit">
+            <property name="placeholderText">
+             <string>Type your message here...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="sendButton">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>80</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Send</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
-     <height>25</height>
+     <width>1000</width>
+     <height>28</height>
     </rect>
    </property>
+   <property name="styleSheet">
+    <string>QMenuBar {
+    background-color: #2d2d2d;
+    color: #ffffff;
+    border-bottom: 1px solid #404040;
+}
+
+QMenuBar::item {
+    background-color: transparent;
+    padding: 4px 8px;
+}
+
+QMenuBar::item:selected {
+    background-color: #00d4aa;
+    color: #ffffff;
+}
+
+QMenu {
+    background-color: #2d2d2d;
+    color: #ffffff;
+    border: 1px solid #404040;
+}
+
+QMenu::item:selected {
+    background-color: #00d4aa;
+}</string>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionNew_Connection"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAbout"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuHelp"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar">
+   <property name="styleSheet">
+    <string>QStatusBar {
+    background-color: #2d2d2d;
+    border-top: 1px solid #404040;
+    color: #ffffff;
+}</string>
+   </property>
+  </widget>
+  <action name="actionNew_Connection">
+   <property name="text">
+    <string>New Connection</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About CyberChat</string>
+   </property>
+  </action>
  </widget>
+ <tabstops>
+  <tabstop>modeComboBox</tabstop>
+  <tabstop>ipLineEdit</tabstop>
+  <tabstop>portLineEdit</tabstop>
+  <tabstop>connectButton</tabstop>
+  <tabstop>disconnectButton</tabstop>
+  <tabstop>messageLineEdit</tabstop>
+  <tabstop>sendButton</tabstop>
+  <tabstop>chatDisplayTextEdit</tabstop>
+  <tabstop>usersListWidget</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
