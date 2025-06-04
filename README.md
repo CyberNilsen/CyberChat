@@ -71,35 +71,13 @@ CyberChat is an open-source, privacy-focused chat application designed for secur
 - Clients connect using the server's public IP address
 - Secure communication over internet connection
 
-## 🏗️ Project Structure
-
-```
-CyberChat/
-├── build/                  # Build output directory
-├── main.cpp               # Application entry point
-├── mainwindow.cpp         # Main window implementation
-├── mainwindow.h           # Main window header
-├── mainwindow.ui          # Qt UI design file
-├── CMakeLists.txt         # CMake build configuration
-├── LICENSE                # MIT license
-└── README.md              # This file
 ```
 
 ## 🔧 Development Status
 
 ⚠️ **Early Development**: This project is currently in active development. Core features are being implemented and the application is not yet ready for production use.
 
-### Current Progress
-- [x] Basic Qt application structure
-- [x] CMake build system setup
-- [x] MIT license configuration
-- [ ] Network communication layer
-- [ ] Encryption implementation
-- [ ] User interface design
-- [ ] LAN discovery mechanism
-- [ ] WAN server/client architecture
-- [ ] Message handling system
-- [ ] Security features
+
 
 ## 🤝 Contributing
 
@@ -135,15 +113,6 @@ For questions, issues, or contributions:
 - Open an issue on GitHub
 - Check existing issues before creating new ones
 - Provide detailed information for bug reports
-
-## 🚧 Roadmap
-
-- [ ] Complete core networking functionality
-- [ ] Implement end-to-end encryption
-- [ ] Design intuitive user interface
-- [ ] Add file sharing capabilities
-- [ ] Multi-platform testing and optimization
-- [ ] Documentation and user guides
 
 ---
 
