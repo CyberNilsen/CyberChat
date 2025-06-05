@@ -1,3 +1,7 @@
+# Ignore build.zip archive
+build.zip
+
+# (your existing rules below)
 # Prerequisites
 *.d
 
