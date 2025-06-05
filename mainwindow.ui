@@ -231,12 +231,7 @@ QComboBox QAbstractItemView {
             </property>
             <item>
              <property name="text">
-              <string>LAN Mode</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>WAN Mode (Server)</string>
+              <string>LAN Mode (Client)</string>
              </property>
             </item>
             <item>
@@ -445,6 +440,8 @@ QMenu::item:selected {
     <addaction name="actionNew_Connection"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
+    <addaction name="actionStart_server_LAN"/>
+    <addaction name="actionStart_server_WAN"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -465,7 +462,7 @@ QMenu::item:selected {
   </action>
   <action name="actionExit">
    <property name="text">
-    <string>Exit</string>
+    <string>Start server LAN</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Q</string>
@@ -474,6 +471,16 @@ QMenu::item:selected {
   <action name="actionAbout">
    <property name="text">
     <string>About CyberChat</string>
+   </property>
+  </action>
+  <action name="actionStart_server_LAN">
+   <property name="text">
+    <string>Start server WAN</string>
+   </property>
+  </action>
+  <action name="actionStart_server_WAN">
+   <property name="text">
+    <string>Exit</string>
    </property>
   </action>
  </widget>
