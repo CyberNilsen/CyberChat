@@ -1,9 +1,0 @@
-C:/Users/ander/Desktop/CyberChat/build/Desktop_Qt_6_9_1_MinGW_64_bit-Debug/CMakeFiles/CyberChat.dir
-C:/Users/ander/Desktop/CyberChat/build/Desktop_Qt_6_9_1_MinGW_64_bit-Debug/CMakeFiles/edit_cache.dir
-C:/Users/ander/Desktop/CyberChat/build/Desktop_Qt_6_9_1_MinGW_64_bit-Debug/CMakeFiles/rebuild_cache.dir
-C:/Users/ander/Desktop/CyberChat/build/Desktop_Qt_6_9_1_MinGW_64_bit-Debug/CMakeFiles/list_install_components.dir
-C:/Users/ander/Desktop/CyberChat/build/Desktop_Qt_6_9_1_MinGW_64_bit-Debug/CMakeFiles/install.dir
-C:/Users/ander/Desktop/CyberChat/build/Desktop_Qt_6_9_1_MinGW_64_bit-Debug/CMakeFiles/install/local.dir
-C:/Users/ander/Desktop/CyberChat/build/Desktop_Qt_6_9_1_MinGW_64_bit-Debug/CMakeFiles/install/strip.dir
-C:/Users/ander/Desktop/CyberChat/build/Desktop_Qt_6_9_1_MinGW_64_bit-Debug/CMakeFiles/CyberChat_autogen_timestamp_deps.dir
-C:/Users/ander/Desktop/CyberChat/build/Desktop_Qt_6_9_1_MinGW_64_bit-Debug/CMakeFiles/CyberChat_autogen.dir
