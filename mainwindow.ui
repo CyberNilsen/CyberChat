@@ -182,6 +182,20 @@ QGroupBox::title {
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_connection">
           <item>
+           <widget class="QLabel" name="usernameLabel">
+            <property name="text">
+             <string>Username:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="usernameLineEdit">
+            <property name="placeholderText">
+             <string>Enter your username...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QLabel" name="modeLabel">
             <property name="text">
              <string>Mode:</string>
@@ -385,7 +399,7 @@ QComboBox QAbstractItemView {
      <x>0</x>
      <y>0</y>
      <width>1000</width>
-     <height>28</height>
+     <height>20</height>
     </rect>
    </property>
    <property name="styleSheet">
@@ -464,6 +478,7 @@ QMenu::item:selected {
   </action>
  </widget>
  <tabstops>
+  <tabstop>usernameLineEdit</tabstop>
   <tabstop>modeComboBox</tabstop>
   <tabstop>ipLineEdit</tabstop>
   <tabstop>portLineEdit</tabstop>
