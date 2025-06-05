@@ -32,3 +32,4 @@ Makefile
 moc_*.cpp
 ui_*.h
 qrc_*.cpp
+*.user
