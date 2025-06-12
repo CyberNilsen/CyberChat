@@ -71,12 +71,30 @@ jobs:
     - name: Build
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
+    # Debug listing on Windows to verify executable location
+    - name: Debug list build files (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        echo Listing build output directory Release:
+        dir "${{ steps.strings.outputs.build-output-dir }}\Release"
+        echo Listing build output directory root:
+        dir "${{ steps.strings.outputs.build-output-dir }}"
+
     - name: Package for Windows
       if: runner.os == 'Windows'
       shell: cmd
       run: |
         mkdir deploy
-        copy "${{ steps.strings.outputs.build-output-dir }}\Release\CyberChat.exe" deploy\
+        if exist "${{ steps.strings.outputs.build-output-dir }}\Release\CyberChat.exe" (
+          copy "${{ steps.strings.outputs.build-output-dir }}\Release\CyberChat.exe" deploy\
+        ) else if exist "${{ steps.strings.outputs.build-output-dir }}\CyberChat.exe" (
+          copy "${{ steps.strings.outputs.build-output-dir }}\CyberChat.exe" deploy\
+        ) else (
+          echo ERROR: CyberChat.exe not found!
+          dir "${{ steps.strings.outputs.build-output-dir }}"
+          exit /b 1
+        )
         windeployqt.exe --release --no-translations deploy\CyberChat.exe
 
     - name: Package for macOS
@@ -84,25 +102,30 @@ jobs:
       shell: bash
       run: |
         mkdir -p deploy/CyberChat.app/Contents/MacOS
-        cp "${{ steps.strings.outputs.build-output-dir }}/CyberChat" deploy/CyberChat.app/Contents/MacOS/
+        # Try Release folder first, fallback to root build dir
+        if [ -f "${{ steps.strings.outputs.build-output-dir }}/Release/CyberChat" ]; then
+          cp "${{ steps.strings.outputs.build-output-dir }}/Release/CyberChat" deploy/CyberChat.app/Contents/MacOS/
+        else
+          cp "${{ steps.strings.outputs.build-output-dir }}/CyberChat" deploy/CyberChat.app/Contents/MacOS/
+        fi
         cat > deploy/CyberChat.app/Contents/Info.plist << EOF
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-          <key>CFBundleExecutable</key>
-          <string>CyberChat</string>
-          <key>CFBundleIdentifier</key>
-          <string>com.cybernilsen.cyberchat</string>
-          <key>CFBundleName</key>
-          <string>CyberChat</string>
-          <key>CFBundleVersion</key>
-          <string>1.0</string>
-          <key>CFBundleShortVersionString</key>
-          <string>1.0</string>
-        </dict>
-        </plist>
-        EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key>
+  <string>CyberChat</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.cybernilsen.cyberchat</string>
+  <key>CFBundleName</key>
+  <string>CyberChat</string>
+  <key>CFBundleVersion</key>
+  <string>1.0</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0</string>
+</dict>
+</plist>
+EOF
         macdeployqt deploy/CyberChat.app
 
     - name: Package for Linux (AppImage)
@@ -115,13 +138,13 @@ jobs:
 
         mkdir -p AppDir/usr/share/applications
         cat > AppDir/usr/share/applications/cyberchat.desktop << EOF
-        [Desktop Entry]
-        Type=Application
-        Name=CyberChat
-        Exec=CyberChat
-        Icon=cyberchat
-        Categories=Network;Chat;
-        EOF
+[Desktop Entry]
+Type=Application
+Name=CyberChat
+Exec=CyberChat
+Icon=cyberchat
+Categories=Network;Chat;
+EOF
 
         mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
         touch AppDir/usr/share/icons/hicolor/256x256/apps/cyberchat.png
