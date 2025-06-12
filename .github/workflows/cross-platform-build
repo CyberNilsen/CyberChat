@@ -1,0 +1,158 @@
+name: CMake Qt Cross-Platform Build for CyberChat
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        build_type: [Release]
+        qt_version: ['6.9.1']
+        include:
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+          - os: macos-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ matrix.qt_version }}
+        host: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'mac' }}
+        target: desktop
+        modules: 'qtnetworkauth'
+        cache: true
+
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libgl1-mesa-dev libxcb-xinerama0-dev libfontconfig1-dev libfreetype6-dev libx11-dev libx11-xcb-dev libxext-dev libxfixes-dev libxi-dev libxrender-dev libxcb1-dev libxcb-glx0-dev libxcb-keysyms1-dev libxcb-image0-dev libxcb-shm0-dev libxcb-icccm4-dev libxcb-sync1 libxcb-render-util0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-randr0-dev libxcb-render0-dev libxcb-util1 fuse libxcb-cursor0 libxcb-cursor-dev
+
+    - name: Set output path
+      id: strings
+      shell: bash
+      run: echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+
+    - name: Configure CMake (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S ${{ github.workspace }}
+
+    - name: Configure CMake (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} \
+              -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+              -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+              -S ${{ github.workspace }}
+
+    - name: Build
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+
+    - name: Package for Windows
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        mkdir deploy
+        copy "${{ steps.strings.outputs.build-output-dir }}\Release\CyberChat.exe" deploy\
+        windeployqt.exe --release --no-translations deploy\CyberChat.exe
+
+    - name: Package for macOS
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        mkdir -p deploy/CyberChat.app/Contents/MacOS
+        cp "${{ steps.strings.outputs.build-output-dir }}/CyberChat" deploy/CyberChat.app/Contents/MacOS/
+        cat > deploy/CyberChat.app/Contents/Info.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>CFBundleExecutable</key>
+          <string>CyberChat</string>
+          <key>CFBundleIdentifier</key>
+          <string>com.cybernilsen.cyberchat</string>
+          <key>CFBundleName</key>
+          <string>CyberChat</string>
+          <key>CFBundleVersion</key>
+          <string>1.0</string>
+          <key>CFBundleShortVersionString</key>
+          <string>1.0</string>
+        </dict>
+        </plist>
+        EOF
+        macdeployqt deploy/CyberChat.app
+
+    - name: Package for Linux (AppImage)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        mkdir -p AppDir/usr/bin
+        cp "${{ steps.strings.outputs.build-output-dir }}/CyberChat" AppDir/usr/bin/
+        chmod +x AppDir/usr/bin/CyberChat
+
+        mkdir -p AppDir/usr/share/applications
+        cat > AppDir/usr/share/applications/cyberchat.desktop << EOF
+        [Desktop Entry]
+        Type=Application
+        Name=CyberChat
+        Exec=CyberChat
+        Icon=cyberchat
+        Categories=Network;Chat;
+        EOF
+
+        mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+        touch AppDir/usr/share/icons/hicolor/256x256/apps/cyberchat.png
+        cp AppDir/usr/share/icons/hicolor/256x256/apps/cyberchat.png AppDir/cyberchat.png
+        cp AppDir/usr/share/applications/cyberchat.desktop AppDir/cyberchat.desktop
+
+        wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+        wget -c "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
+        chmod +x *.AppImage
+
+        ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
+        mkdir deploy
+        mv CyberChat*.AppImage deploy/CyberChat-Linux-x86_64.AppImage
+
+    - name: Upload Windows Artifact
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: CyberChat-Windows
+        path: deploy/
+
+    - name: Upload macOS Artifact
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v4
+      with:
+        name: CyberChat-macOS
+        path: deploy/
+
+    - name: Upload Linux Artifact
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v4
+      with:
+        name: CyberChat-Linux
+        path: deploy/
