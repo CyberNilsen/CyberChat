@@ -56,27 +56,27 @@ jobs:
       if: runner.os == 'Windows'
       shell: cmd
       run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S ${{ github.workspace }}
+        cmake -B ${{ steps.strings.outputs['build-output-dir'] }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S ${{ github.workspace }}
 
     - name: Configure CMake (Unix)
       if: runner.os != 'Windows'
       shell: bash
       run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} \
+        cmake -B ${{ steps.strings.outputs['build-output-dir'] }} \
               -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
               -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
               -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
               -S ${{ github.workspace }}
 
     - name: Build
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+      run: cmake --build ${{ steps.strings.outputs['build-output-dir'] }} --config ${{ matrix.build_type }}
 
     - name: Package for Windows
       if: runner.os == 'Windows'
       shell: cmd
       run: |
         mkdir deploy
-        copy "${{ steps.strings.outputs.build-output-dir }}\${{ matrix.build_type }}\CyberChat.exe" deploy\
+        copy "${{ steps.strings.outputs['build-output-dir'] }}\${{ matrix.build_type }}\CyberChat.exe" deploy\
         windeployqt.exe --release --no-translations deploy\CyberChat.exe
 
     - name: Package for macOS
@@ -84,10 +84,10 @@ jobs:
       shell: bash
       run: |
         mkdir -p deploy/CyberChat.app/Contents/MacOS
-        if [ -f "${{ steps.strings.outputs.build-output-dir }}/Release/CyberChat" ]; then
-          cp "${{ steps.strings.outputs.build-output-dir }}/Release/CyberChat" deploy/CyberChat.app/Contents/MacOS/
+        if [ -f "${{ steps.strings.outputs['build-output-dir'] }}/Release/CyberChat" ]; then
+          cp "${{ steps.strings.outputs['build-output-dir'] }}/Release/CyberChat" deploy/CyberChat.app/Contents/MacOS/
         else
-          cp "${{ steps.strings.outputs.build-output-dir }}/CyberChat" deploy/CyberChat.app/Contents/MacOS/
+          cp "${{ steps.strings.outputs['build-output-dir'] }}/CyberChat" deploy/CyberChat.app/Contents/MacOS/
         fi
         cat > deploy/CyberChat.app/Contents/Info.plist <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -114,7 +114,7 @@ EOF
       shell: bash
       run: |
         mkdir -p AppDir/usr/bin
-        cp "${{ steps.strings.outputs.build-output-dir }}/CyberChat" AppDir/usr/bin/
+        cp "${{ steps.strings.outputs['build-output-dir'] }}/CyberChat" AppDir/usr/bin/
         chmod +x AppDir/usr/bin/CyberChat
 
         mkdir -p AppDir/usr/share/applications
