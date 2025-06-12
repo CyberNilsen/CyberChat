@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
-    
+
     strategy:
       fail-fast: false
       matrix:
@@ -71,30 +71,12 @@ jobs:
     - name: Build
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
-    # Debug listing on Windows to verify executable location
-    - name: Debug list build files (Windows)
-      if: runner.os == 'Windows'
-      shell: cmd
-      run: |
-        echo Listing build output directory Release:
-        dir "${{ steps.strings.outputs.build-output-dir }}\Release"
-        echo Listing build output directory root:
-        dir "${{ steps.strings.outputs.build-output-dir }}"
-
     - name: Package for Windows
       if: runner.os == 'Windows'
       shell: cmd
       run: |
         mkdir deploy
-        if exist "${{ steps.strings.outputs.build-output-dir }}\Release\CyberChat.exe" (
-          copy "${{ steps.strings.outputs.build-output-dir }}\Release\CyberChat.exe" deploy\
-        ) else if exist "${{ steps.strings.outputs.build-output-dir }}\CyberChat.exe" (
-          copy "${{ steps.strings.outputs.build-output-dir }}\CyberChat.exe" deploy\
-        ) else (
-          echo ERROR: CyberChat.exe not found!
-          dir "${{ steps.strings.outputs.build-output-dir }}"
-          exit /b 1
-        )
+        copy "${{ steps.strings.outputs.build-output-dir }}\${{ matrix.build_type }}\CyberChat.exe" deploy\
         windeployqt.exe --release --no-translations deploy\CyberChat.exe
 
     - name: Package for macOS
@@ -102,7 +84,7 @@ jobs:
       shell: bash
       run: |
         mkdir -p deploy/CyberChat.app/Contents/MacOS
-        # Try Release folder first, fallback to root build dir
+        # Use Release folder if present, else fallback to root build dir
         if [ -f "${{ steps.strings.outputs.build-output-dir }}/Release/CyberChat" ]; then
           cp "${{ steps.strings.outputs.build-output-dir }}/Release/CyberChat" deploy/CyberChat.app/Contents/MacOS/
         else
