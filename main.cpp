@@ -9,3 +9,5 @@ int main(int argc, char *argv[])
     w.show();
     return a.exec();
 }
+
+// Here is what happens when we start the program, we initilize the window and show it, we also keep it running when it has started

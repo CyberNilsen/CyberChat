@@ -196,52 +196,6 @@ QGroupBox::title {
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="modeLabel">
-            <property name="text">
-             <string>Mode:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="modeComboBox">
-            <property name="styleSheet">
-             <string>QComboBox {
-    background-color: #2d2d2d;
-    border: 1px solid #404040;
-    border-radius: 6px;
-    padding: 8px;
-    color: #ffffff;
-}
-
-QComboBox::drop-down {
-    border: none;
-}
-
-QComboBox::down-arrow {
-    image: url(:/icons/arrow_down.png);
-    width: 12px;
-    height: 12px;
-}
-
-QComboBox QAbstractItemView {
-    background-color: #2d2d2d;
-    border: 1px solid #404040;
-    selection-background-color: #00d4aa;
-}</string>
-            </property>
-            <item>
-             <property name="text">
-              <string>LAN Mode (Client)</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>WAN Mode (Client)</string>
-             </property>
-            </item>
-           </widget>
-          </item>
-          <item>
            <widget class="QLabel" name="ipLabel">
             <property name="text">
              <string>IP Address:</string>
@@ -494,7 +448,6 @@ QMenu::item:selected {
  </widget>
  <tabstops>
   <tabstop>usernameLineEdit</tabstop>
-  <tabstop>modeComboBox</tabstop>
   <tabstop>ipLineEdit</tabstop>
   <tabstop>portLineEdit</tabstop>
   <tabstop>connectButton</tabstop>

@@ -67,16 +67,18 @@ void MainWindow::startServer(const QString& mode)
         stopServer();
     }
     // Start the server, if the server is already running we stop that server and start a new one
+
     m_server = new QTcpServer(this);
     connect(m_server, &QTcpServer::newConnection, this, &MainWindow::onNewConnection);
 
-    // Get port from UI, default to 8080
+    // The server relies on qt framework
+
     quint16 port = ui->portLineEdit->text().toUInt();
     if (port == 0) port = 8080;
 
-    // FIXED: Both LAN and WAN modes now accept connections from any IP
-    // LAN mode accepts connections from local network devices
-    // WAN mode accepts connections from anywhere (requires port forwarding)
+    // Server port
+
+
     QHostAddress bindAddress = QHostAddress::Any;
 
     if (m_server->listen(bindAddress, port)) {
@@ -85,17 +87,24 @@ void MainWindow::startServer(const QString& mode)
         QString localIP = getLocalIPAddress();
         QString message;
 
+        // Here we say that the server listens to every adress so its open for every adress
+
         if (mode == "LAN") {
             message = QString("LAN Server started on port %1 and local IP %2").arg(port).arg(localIP);
             addChatMessage(message);
             addChatMessage("Other devices on your network can connect using: " + localIP + ":" + QString::number(port));
             ui->statusbar->showMessage(QString("LAN Server running on %1:%2").arg(localIP).arg(port));
+
+            // if the server starts in LAN mode we write server ip adress and port to the GUI
+
         } else {
             message = QString("WAN Server started on port %1 and local IP %2").arg(port).arg(localIP);
             addChatMessage(message);
             addChatMessage("Getting public IP address...");
             ui->statusbar->showMessage(QString("WAN Server running on %1:%2").arg(localIP).arg(port));
             getPublicIP();
+
+            // if the server starts in WAN mode we write server ip adress and port to the GUI
         }
         updateUI();
     } else {
@@ -103,6 +112,9 @@ void MainWindow::startServer(const QString& mode)
                               QString("Failed to start server: %1").arg(m_server->errorString()));
         delete m_server;
         m_server = nullptr;
+
+        // If we cant start the server we get a error message and we also stop the server
+
     }
 }
 
@@ -123,6 +135,8 @@ void MainWindow::getPublicIP()
         }
         reply->deleteLater();
     });
+
+    // Here we fetch the public ip and display it in the GUI
 }
 
 void MainWindow::on_actionStop_server_triggered()
@@ -130,12 +144,11 @@ void MainWindow::on_actionStop_server_triggered()
     stopServer();
 }
 
-// And add the stopServer() method implementation:
+// If stop server button is pressed we call the method stopserver
 
 void MainWindow::stopServer()
 {
     if (m_server) {
-        // Disconnect all clients
         for (const auto& client : m_clients) {
             client.socket->disconnectFromHost();
         }
@@ -150,6 +163,8 @@ void MainWindow::stopServer()
         ui->statusbar->clearMessage();
         updateUsersList();
         updateUI();
+
+        // Here is the method to stop the server, here we disconnect all clients, and stop the server
     }
 }
 
@@ -163,11 +178,13 @@ void MainWindow::onNewConnection()
     ConnectedClient client;
     client.socket = clientSocket;
     client.address = clientSocket->peerAddress().toString();
-    client.username = ""; // Will be set when client sends username
+    client.username = "";
 
     m_clients.append(client);
 
     addChatMessage(QString("New connection from %1").arg(client.address));
+
+    // Here the server accepts a client
 }
 
 void MainWindow::onClientDisconnected()
@@ -196,6 +213,8 @@ void MainWindow::onClientDisconnected()
     clientSocket->deleteLater();
 }
 
+// If a client disconnects we tell the other clients in the server that, that client has left
+
 void MainWindow::onClientDataReceived()
 {
     QTcpSocket* clientSocket = qobject_cast<QTcpSocket*>(sender());
@@ -210,7 +229,7 @@ void MainWindow::onClientDataReceived()
     QString username = message["username"].toString();
 
     if (type == "join") {
-        // Update client username
+
         for (auto& client : m_clients) {
             if (client.socket == clientSocket) {
                 client.username = username;
@@ -218,14 +237,16 @@ void MainWindow::onClientDataReceived()
             }
         }
 
+// Here is what happens when a client joins, if the client sends a message the server recieves it
+
         addChatMessage(QString("%1 joined the chat").arg(username));
         updateUsersList();
 
-        // Notify other clients
         QJsonObject joinMessage = createMessage("user_joined", "", username);
         broadcastMessage(joinMessage, clientSocket);
 
-        // Send current users list to new client
+        // Here we notify users in the server that a new client has joined/user
+
         QJsonArray usersArray;
         for (const auto& client : m_clients) {
             if (!client.username.isEmpty()) {
@@ -240,6 +261,8 @@ void MainWindow::onClientDataReceived()
         addChatMessage(QString("[%1]: %2").arg(username, content));
         broadcastMessage(message, clientSocket);
     }
+
+    // Here is the connected users list that are connected to the server, and if the client types a message we broadcast that to the other clients
 }
 
 void MainWindow::broadcastMessage(const QJsonObject& message, QTcpSocket* sender)
@@ -254,6 +277,8 @@ void MainWindow::broadcastMessage(const QJsonObject& message, QTcpSocket* sender
     }
 }
 
+// Here is the code to broadcast the messages that the users send
+
 void MainWindow::sendToClient(QTcpSocket* client, const QJsonObject& message)
 {
     if (client && client->state() == QTcpSocket::ConnectedState) {
@@ -262,6 +287,8 @@ void MainWindow::sendToClient(QTcpSocket* client, const QJsonObject& message)
         client->write(data);
     }
 }
+
+// This is the code to send the broadcasted message further to the clients
 
 void MainWindow::updateUsersList()
 {
@@ -276,6 +303,8 @@ void MainWindow::updateUsersList()
     }
 }
 
+// if a user joins then the connected users get updated
+
 void MainWindow::addChatMessage(const QString& message)
 {
     QString timestamp = QDateTime::currentDateTime().toString("hh:mm:ss");
@@ -283,11 +312,12 @@ void MainWindow::addChatMessage(const QString& message)
     ui->chatDisplayTextEdit->append(formattedMessage);
 }
 
+// The message that the users send get a timestamp and is also formatted, timestamp and then the message
+
 QString MainWindow::getLocalIPAddress()
 {
     QString localIP;
 
-    // Get the first non-loopback IPv4 address
     QList<QHostAddress> addresses = QNetworkInterface::allAddresses();
     for (const QHostAddress& address : addresses) {
         if (address.protocol() == QAbstractSocket::IPv4Protocol &&
@@ -299,22 +329,25 @@ QString MainWindow::getLocalIPAddress()
     }
 
     if (localIP.isEmpty()) {
-        localIP = "127.0.0.1"; // Fallback to localhost
+        localIP = "127.0.0.1";
     }
 
     return localIP;
 }
 
+// Here is the code to get the local IP adress of the server
+
 void MainWindow::updateUI()
 {
     bool isServerRunning = (m_server && m_server->isListening());
 
-    // Update UI based on server state
     ui->connectButton->setEnabled(!isServerRunning && !m_isConnected);
     ui->disconnectButton->setEnabled(isServerRunning || m_isConnected);
     ui->sendButton->setEnabled(isServerRunning || m_isConnected);
     ui->messageLineEdit->setEnabled(isServerRunning || m_isConnected);
 }
+
+// Here we update the UI in realtime when changes are made, new messages and etc
 
 QJsonObject MainWindow::createMessage(const QString& type, const QString& content, const QString& username)
 {
@@ -326,17 +359,18 @@ QJsonObject MainWindow::createMessage(const QString& type, const QString& conten
     return message;
 }
 
-// Placeholder implementations for other slots
+// When the user sends a message this is what the message consists off or rather the data that gets sent to the server
+
 void MainWindow::on_actionExit_triggered() { close(); }
-void MainWindow::on_actionAbout_triggered() { /* TODO: Show about dialog */ }
-void MainWindow::on_actionNew_Connection_triggered() { /* TODO: Clear and reset connection */ }
-void MainWindow::on_connectButton_clicked() { /* TODO: Implement client connection */ }
-void MainWindow::on_disconnectButton_clicked() { /* TODO: Implement disconnection */ }
-void MainWindow::on_sendButton_clicked() { /* TODO: Implement message sending */ }
+void MainWindow::on_actionAbout_triggered() {}
+void MainWindow::on_actionNew_Connection_triggered() {}
+void MainWindow::on_connectButton_clicked() {}
+void MainWindow::on_disconnectButton_clicked() {}
+void MainWindow::on_sendButton_clicked() {}
 void MainWindow::on_messageLineEdit_returnPressed() { on_sendButton_clicked(); }
-void MainWindow::onConnectedToServer() { /* TODO: Handle server connection */ }
-void MainWindow::onDisconnectedFromServer() { /* TODO: Handle server disconnection */ }
-void MainWindow::onServerDataReceived() { /* TODO: Handle server data */ }
-void MainWindow::onSocketError(QAbstractSocket::SocketError error) { /* TODO: Handle socket errors */ }
-void MainWindow::connectToServer() { /* TODO: Implement client connection logic */ }
-void MainWindow::disconnectFromServer() { /* TODO: Implement client disconnection logic */ }
+void MainWindow::onConnectedToServer() {}
+void MainWindow::onDisconnectedFromServer() {}
+void MainWindow::onServerDataReceived() {}
+void MainWindow::onSocketError(QAbstractSocket::SocketError error) {}
+void MainWindow::connectToServer() {}
+void MainWindow::disconnectFromServer() {}
