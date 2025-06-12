@@ -84,13 +84,12 @@ jobs:
       shell: bash
       run: |
         mkdir -p deploy/CyberChat.app/Contents/MacOS
-        # Use Release folder if present, else fallback to root build dir
         if [ -f "${{ steps.strings.outputs.build-output-dir }}/Release/CyberChat" ]; then
           cp "${{ steps.strings.outputs.build-output-dir }}/Release/CyberChat" deploy/CyberChat.app/Contents/MacOS/
         else
           cp "${{ steps.strings.outputs.build-output-dir }}/CyberChat" deploy/CyberChat.app/Contents/MacOS/
         fi
-        cat > deploy/CyberChat.app/Contents/Info.plist << EOF
+        cat > deploy/CyberChat.app/Contents/Info.plist <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -119,7 +118,7 @@ EOF
         chmod +x AppDir/usr/bin/CyberChat
 
         mkdir -p AppDir/usr/share/applications
-        cat > AppDir/usr/share/applications/cyberchat.desktop << EOF
+        cat > AppDir/usr/share/applications/cyberchat.desktop <<EOF
 [Desktop Entry]
 Type=Application
 Name=CyberChat
