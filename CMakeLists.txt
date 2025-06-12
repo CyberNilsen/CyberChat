@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(CyberChat VERSION 0.1 LANGUAGES CXX)
+
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -25,7 +26,15 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui
+        resources.qrc  # Add the resource file here
 )
+
+# Create Windows resource file for icon
+if(WIN32)
+    set(WIN_RESOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/app.rc.in" "${WIN_RESOURCE_FILE}" @ONLY)
+    list(APPEND PROJECT_SOURCES "${WIN_RESOURCE_FILE}")
+endif()
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(CyberChat
@@ -57,6 +66,27 @@ endif()
 
 if(${QT_VERSION} VERSION_LESS 6.1.0)
   set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.CyberChat)
+endif()
+
+# Set application icon for different platforms
+if(WIN32)
+    # For Windows, you can set an icon
+    set_target_properties(CyberChat PROPERTIES
+        WIN32_EXECUTABLE TRUE
+    )
+    # Windows icon is handled by app.rc file
+endif()
+
+if(APPLE)
+    # For macOS, set the bundle icon
+    set_target_properties(CyberChat PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_ICON_FILE "logo.png"
+    )
+    # Copy the icon file to the bundle
+    set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/Images/CyberChat.png" PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources")
+    target_sources(CyberChat PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Images/CyberChat.png")
 endif()
 
 set_target_properties(CyberChat PROPERTIES

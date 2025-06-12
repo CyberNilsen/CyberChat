@@ -1,0 +1,38 @@
+IDI_ICON1 ICON DISCARDABLE "Images/CyberChat.ico"
+
+#ifdef GCC_WINDRES
+VS_VERSION_INFO VERSIONINFO
+#else
+VS_VERSION_INFO VERSIONINFO
+#endif
+FILEVERSION     0,1,0,0
+PRODUCTVERSION  0,1,0,0
+FILEFLAGSMASK   0x3fL
+#ifdef _DEBUG
+FILEFLAGS       0x1L
+#else
+FILEFLAGS       0x0L
+#endif
+FILEOS          0x00040004L
+FILETYPE        0x00000001L
+FILESUBTYPE     0x00000000L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "000004b0"
+        BEGIN
+            VALUE "CompanyName", "CyberNilsen"
+            VALUE "FileDescription", "CyberChat - Secure Anonymous Messaging"
+            VALUE "FileVersion", "0.1.0.0"
+            VALUE "InternalName", "CyberChat"
+            VALUE "LegalCopyright", "Copyright (C) 2025"
+            VALUE "OriginalFilename", "CyberChat.exe"
+            VALUE "ProductName", "CyberChat"
+            VALUE "ProductVersion", "0.1.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0000, 1200
+    END
+END

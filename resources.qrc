@@ -1,0 +1,25 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource>
+        <!-- Add your logo images here -->
+        <file alias="logo.png">Images/CyberChat.png</file>
+        <file alias="logo16.ico">Images/CyberChat16x16.ico</file>
+        <file alias="logo24.ico">Images/CyberChat24x24.ico</file>
+        <file alias="logo32.ico">Images/CyberChat32x32.ico</file>
+        <file alias="logo48.ico">Images/CyberChat48x48.ico</file>
+        <file alias="logo64.ico">Images/CyberChat64x64.ico</file>
+        <file alias="logo128.ico">Images/CyberChat128x128.ico</file>
+        <file alias="logo256.ico">Images/CyberChat256x256.ico</file>
+        <file alias="logo512.ico">Images/CyberChat512x512.ico</file>
+
+        <!-- PNG versions -->
+        <file alias="logo16.png">Images/CyberChat16x16.png</file>
+        <file alias="logo24.png">Images/CyberChat24x24.png</file>
+        <file alias="logo32.png">Images/CyberChat32x32.png</file>
+        <file alias="logo48.png">Images/CyberChat48x48.png</file>
+        <file alias="logo64.png">Images/CyberChat64x64.png</file>
+        <file alias="logo128.png">Images/CyberChat128x128.png</file>
+        <file alias="logo256.png">Images/CyberChat256x256.png</file>
+        <file alias="logo512.png">Images/CyberChat512x512.png</file>
+    </qresource>
+</RCC>
