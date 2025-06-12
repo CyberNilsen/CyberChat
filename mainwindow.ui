@@ -403,7 +403,7 @@ QComboBox QAbstractItemView {
      <x>0</x>
      <y>0</y>
      <width>1000</width>
-     <height>20</height>
+     <height>28</height>
     </rect>
    </property>
    <property name="styleSheet">
@@ -419,7 +419,7 @@ QMenuBar::item {
 }
 
 QMenuBar::item:selected {
-    background-color: #00d4aa;
+    background-color: rgba(0, 212, 170, 0.15);
     color: #ffffff;
 }
 
@@ -430,7 +430,8 @@ QMenu {
 }
 
 QMenu::item:selected {
-    background-color: #00d4aa;
+    background-color: rgba(0, 212, 170, 0.12);
+    color: #ffffff;
 }</string>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -439,9 +440,11 @@ QMenu::item:selected {
     </property>
     <addaction name="actionNew_Connection"/>
     <addaction name="separator"/>
-    <addaction name="actionExit"/>
     <addaction name="actionStart_server_LAN"/>
     <addaction name="actionStart_server_WAN"/>
+    <addaction name="actionStop_server"/>
+    <addaction name="actionExit"/>
+    <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -460,7 +463,7 @@ QMenu::item:selected {
     <string>Ctrl+N</string>
    </property>
   </action>
-  <action name="actionExit">
+  <action name="actionStart_server_LAN">
    <property name="text">
     <string>Start server LAN</string>
    </property>
@@ -473,14 +476,19 @@ QMenu::item:selected {
     <string>About CyberChat</string>
    </property>
   </action>
-  <action name="actionStart_server_LAN">
+  <action name="actionStart_server_WAN">
    <property name="text">
     <string>Start server WAN</string>
    </property>
   </action>
-  <action name="actionStart_server_WAN">
+  <action name="actionExit">
    <property name="text">
     <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionStop_server">
+   <property name="text">
+    <string>Stop server</string>
    </property>
   </action>
  </widget>

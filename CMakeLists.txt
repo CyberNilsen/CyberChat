@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
 project(CyberChat VERSION 0.1 LANGUAGES CXX)
-
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -17,8 +16,9 @@ elseif(MINGW OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 endif()
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+# Add Network module to Qt components
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -44,7 +44,8 @@ else()
     endif()
 endif()
 
-target_link_libraries(CyberChat PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+# Link both Widgets and Network modules
+target_link_libraries(CyberChat PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Network)
 
 # Ensure C++17 features are available
 target_compile_features(CyberChat PRIVATE cxx_std_17)
