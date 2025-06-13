@@ -122,6 +122,8 @@ jobs:
         REM Copy Visual C++ Runtime DLLs - try multiple locations
         REM Method 1: From GitHub Actions environment (most reliable)
         copy "C:\Windows\System32\msvcp140.dll" deploy\ 2>nul
+        copy "C:\Windows\System32\msvcp140_1.dll" deploy\ 2>nul
+        copy "C:\Windows\System32\msvcp140_2.dll" deploy\ 2>nul
         copy "C:\Windows\System32\vcruntime140.dll" deploy\ 2>nul
         copy "C:\Windows\System32\vcruntime140_1.dll" deploy\ 2>nul
         
@@ -129,6 +131,8 @@ jobs:
         for /d %%i in ("C:\Program Files\Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*") do (
             if exist "%%i\x64\Microsoft.VC143.CRT\msvcp140.dll" (
                 copy "%%i\x64\Microsoft.VC143.CRT\msvcp140.dll" deploy\ 2>nul
+                copy "%%i\x64\Microsoft.VC143.CRT\msvcp140_1.dll" deploy\ 2>nul
+                copy "%%i\x64\Microsoft.VC143.CRT\msvcp140_2.dll" deploy\ 2>nul
                 copy "%%i\x64\Microsoft.VC143.CRT\vcruntime140.dll" deploy\ 2>nul
                 copy "%%i\x64\Microsoft.VC143.CRT\vcruntime140_1.dll" deploy\ 2>nul
             )
@@ -197,7 +201,10 @@ jobs:
         echo.
         echo Critical runtime DLLs status:
         if exist "deploy\msvcp140.dll" (echo ✓ msvcp140.dll found) else (echo ✗ msvcp140.dll MISSING)
+        if exist "deploy\msvcp140_1.dll" (echo ✓ msvcp140_1.dll found) else (echo ✗ msvcp140_1.dll MISSING)
+        if exist "deploy\msvcp140_2.dll" (echo ✓ msvcp140_2.dll found) else (echo ✗ msvcp140_2.dll MISSING)
         if exist "deploy\vcruntime140.dll" (echo ✓ vcruntime140.dll found) else (echo ✗ vcruntime140.dll MISSING)
+        if exist "deploy\vcruntime140_1.dll" (echo ✓ vcruntime140_1.dll found) else (echo ✗ vcruntime140_1.dll MISSING)
         if exist "deploy\ucrtbase.dll" (echo ✓ ucrtbase.dll found) else (echo ✗ ucrtbase.dll MISSING)
         
     - name: Package macOS Application (Fully Portable)
