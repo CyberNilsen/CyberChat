@@ -14,11 +14,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, windows-latest, macos-latest]
+        os: [ubuntu-22.04, windows-latest, macos-latest]
         build_type: [Release]
         qt_version: ['6.5.3']
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             c_compiler: gcc
             cpp_compiler: g++
           - os: windows-latest
@@ -36,7 +36,7 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: ${{ matrix.qt_version }}
-        host: ${{ matrix.os == 'ubuntu-20.04' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'mac' }}
+        host: ${{ matrix.os == 'ubuntu-22.04' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'mac' }}
         target: desktop
         modules: 'qtnetworkauth qtmultimedia'
         cache: true
@@ -52,47 +52,21 @@ jobs:
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-
+        
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
       shell: cmd
       run: |
         cmake -B "${{ steps.strings.outputs.build-output-dir }}" -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -S "${{ github.workspace }}"
-
+        
     - name: Configure CMake (Unix)
       if: runner.os != 'Windows'
       shell: bash
       run: |
         cmake -B "${{ steps.strings.outputs.build-output-dir }}" -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S "${{ github.workspace }}"
-
+        
     - name: Build
       run: cmake --build "${{ steps.strings.outputs.build-output-dir }}" --config ${{ matrix.build_type }}
-
-    - name: Download and Install VC++ Redistributables
-      if: runner.os == 'Windows'
-      shell: powershell
-      run: |
-        # Download Microsoft Visual C++ Redistributable
-        $vcRedistUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
-        $vcRedistPath = "$env:TEMP\vc_redist.x64.exe"
-        
-        Write-Host "Downloading VC++ Redistributable..."
-        Invoke-WebRequest -Uri $vcRedistUrl -OutFile $vcRedistPath
-        
-        # Extract redistributable DLLs without installing
-        $extractPath = "$env:TEMP\vcredist_extract"
-        New-Item -ItemType Directory -Force -Path $extractPath
-        
-        # Use 7zip or expand to extract
-        & $vcRedistPath /extract:$extractPath /quiet
-        
-        # Find and copy the DLLs
-        $dllPath = Get-ChildItem -Path $extractPath -Recurse -Name "*.dll" | Select-Object -First 1 | Split-Path -Parent
-        if ($dllPath) {
-            Write-Host "Found DLLs at: $dllPath"
-            $fullDllPath = Join-Path $extractPath $dllPath
-            Copy-Item -Path "$fullDllPath\*.dll" -Destination "." -Force
-        }
 
     - name: Package Windows Application (Fully Portable with Runtime DLLs)
       if: runner.os == 'Windows'
@@ -118,11 +92,6 @@ jobs:
                 copy "%%i\x64\Microsoft.VC143.CRT\vcruntime140_1.dll" deploy\ 2>nul
             )
         )
-        
-        REM Method 3: From any downloaded redistributables
-        copy "msvcp140.dll" deploy\ 2>nul
-        copy "vcruntime140.dll" deploy\ 2>nul
-        copy "vcruntime140_1.dll" deploy\ 2>nul
         
         REM Copy Universal CRT (UCRT) DLLs - critical for Windows 7/8 compatibility
         copy "C:\Windows\System32\ucrtbase.dll" deploy\ 2>nul
@@ -161,7 +130,7 @@ jobs:
         if exist "deploy\msvcp140.dll" (echo ✓ msvcp140.dll found) else (echo ✗ msvcp140.dll MISSING)
         if exist "deploy\vcruntime140.dll" (echo ✓ vcruntime140.dll found) else (echo ✗ vcruntime140.dll MISSING)
         if exist "deploy\ucrtbase.dll" (echo ✓ ucrtbase.dll found) else (echo ✗ ucrtbase.dll MISSING)
-
+        
     - name: Package macOS Application (Fully Portable)
       if: runner.os == 'macOS'
       shell: bash
@@ -217,7 +186,7 @@ jobs:
         
         # Create a DMG for easy distribution
         hdiutil create -volname "CyberChat" -srcfolder deploy/CyberChat.app -ov -format UDZO deploy/CyberChat-macOS.dmg
-
+        
     - name: Package Linux Application (Fully Portable AppImage)
       if: runner.os == 'Linux'
       shell: bash
@@ -357,7 +326,7 @@ jobs:
           ls -la
           exit 1
         fi
-
+        
     - name: Test Executables
       shell: bash
       run: |
@@ -387,7 +356,7 @@ jobs:
             exit 1
           fi
         fi
-
+        
     - name: Run Unit Tests (if available)
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       continue-on-error: true
@@ -399,7 +368,7 @@ jobs:
         else
           echo "No CTest configuration found, skipping tests"
         fi
-
+        
     - name: Upload Windows Portable Package
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
