@@ -68,6 +68,27 @@ jobs:
     - name: Build
       run: cmake --build "${{ steps.strings.outputs.build-output-dir }}" --config ${{ matrix.build_type }}
 
+    - name: Debug Qt Installation (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        echo Qt6_DIR: %Qt6_DIR%
+        echo PATH: %PATH%
+        echo.
+        echo Qt bin directory contents:
+        dir "%Qt6_DIR%\bin" /b | findstr /i "qt6\|windeployqt"
+        echo.
+        echo Qt plugins directory:
+        if exist "%Qt6_DIR%\plugins" (
+            dir "%Qt6_DIR%\plugins" /b
+        ) else (
+            echo Qt plugins directory not found
+        )
+        echo.
+        echo Checking windeployqt:
+        where windeployqt.exe || echo windeployqt.exe not found in PATH
+        "%Qt6_DIR%\bin\windeployqt.exe" --help | head -5 || echo Failed to run windeployqt
+
     - name: Package Windows Application (Fully Portable with Runtime DLLs)
       if: runner.os == 'Windows'
       shell: cmd
@@ -75,8 +96,28 @@ jobs:
         mkdir deploy
         copy "${{ steps.strings.outputs.build-output-dir }}\Release\CyberChat.exe" deploy\ || copy "${{ steps.strings.outputs.build-output-dir }}\CyberChat.exe" deploy\
         
-        REM Deploy Qt dependencies
-        windeployqt.exe --release --no-translations --no-system-d3d-compiler --no-opengl-sw --force --no-quick-import --no-webkit2 deploy\CyberChat.exe
+        REM Set Qt paths explicitly
+        set QT_DIR=%Qt6_DIR%
+        set PATH=%Qt6_DIR%\bin;%PATH%
+        
+        REM Deploy Qt dependencies with more comprehensive options
+        "%Qt6_DIR%\bin\windeployqt.exe" --release --no-translations --no-system-d3d-compiler --no-opengl-sw --force --no-quick-import --no-webkit2 --no-virtualkeyboard --compiler-runtime --verbose 2 deploy\CyberChat.exe
+        
+        REM Manually copy critical Qt DLLs if windeployqt missed them
+        copy "%Qt6_DIR%\bin\Qt6Core.dll" deploy\ 2>nul
+        copy "%Qt6_DIR%\bin\Qt6Gui.dll" deploy\ 2>nul
+        copy "%Qt6_DIR%\bin\Qt6Widgets.dll" deploy\ 2>nul
+        copy "%Qt6_DIR%\bin\Qt6Network.dll" deploy\ 2>nul
+        copy "%Qt6_DIR%\bin\Qt6NetworkAuth.dll" deploy\ 2>nul
+        copy "%Qt6_DIR%\bin\Qt6Multimedia.dll" deploy\ 2>nul
+        
+        REM Copy Qt platform plugins manually if needed
+        if not exist "deploy\platforms" mkdir deploy\platforms
+        copy "%Qt6_DIR%\plugins\platforms\qwindows.dll" deploy\platforms\ 2>nul
+        
+        REM Copy Qt styles if they exist
+        if not exist "deploy\styles" mkdir deploy\styles
+        copy "%Qt6_DIR%\plugins\styles\*.dll" deploy\styles\ 2>nul
         
         REM Copy Visual C++ Runtime DLLs - try multiple locations
         REM Method 1: From GitHub Actions environment (most reliable)
@@ -109,8 +150,9 @@ jobs:
         REM Create a portable launcher batch file with proper PATH setup
         echo @echo off > deploy\CyberChat_Portable.bat
         echo cd /d "%%~dp0" >> deploy\CyberChat_Portable.bat
-        echo set PATH=%%~dp0;%%PATH%% >> deploy\CyberChat_Portable.bat
+        echo set PATH=%%~dp0;%%~dp0\platforms;%%~dp0\styles;%%PATH%% >> deploy\CyberChat_Portable.bat
         echo set QT_PLUGIN_PATH=%%~dp0 >> deploy\CyberChat_Portable.bat
+        echo set QT_QPA_PLATFORM_PLUGIN_PATH=%%~dp0\platforms >> deploy\CyberChat_Portable.bat
         echo CyberChat.exe %%* >> deploy\CyberChat_Portable.bat
         
         REM Create a verification script to check for missing DLLs
@@ -118,6 +160,33 @@ jobs:
         echo echo Checking dependencies for CyberChat.exe... >> deploy\Check_Dependencies.bat
         echo dumpbin /dependents CyberChat.exe ^| findstr /i "\.dll" >> deploy\Check_Dependencies.bat
         echo pause >> deploy\Check_Dependencies.bat
+        
+        REM List Qt DLLs that were deployed
+        echo.
+        echo Qt DLLs in deploy directory:
+        dir deploy\Qt6*.dll /b 2>nul || echo No Qt6 DLLs found
+        
+        REM Check platforms directory
+        if exist "deploy\platforms" (
+            echo.
+            echo Platform plugins:
+            dir deploy\platforms\*.dll /b
+        ) else (
+            echo No platforms directory found
+        )
+        
+        REM List all files in deploy directory for verification
+        echo.
+        echo All files in deploy directory:
+        dir deploy\ /b
+        
+        REM Check if critical Qt DLLs are present
+        echo.
+        echo Critical Qt DLLs status:
+        if exist "deploy\Qt6Core.dll" (echo ✓ Qt6Core.dll found) else (echo ✗ Qt6Core.dll MISSING)
+        if exist "deploy\Qt6Gui.dll" (echo ✓ Qt6Gui.dll found) else (echo ✗ Qt6Gui.dll MISSING)
+        if exist "deploy\Qt6Widgets.dll" (echo ✓ Qt6Widgets.dll found) else (echo ✗ Qt6Widgets.dll MISSING)
+        if exist "deploy\platforms\qwindows.dll" (echo ✓ qwindows.dll found) else (echo ✗ qwindows.dll MISSING)
         
         REM List all files in deploy directory for verification
         echo.
