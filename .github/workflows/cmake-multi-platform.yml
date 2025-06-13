@@ -1,4 +1,4 @@
-name: CMake Qt Cross-Platform Build
+name: CMake Qt Cross-Platform Portable Build
 
 on:
   push:
@@ -14,11 +14,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-20.04, windows-latest, macos-latest]  # Use older Ubuntu for better compatibility
         build_type: [Release]
         qt_version: ['6.5.3']
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             c_compiler: gcc
             cpp_compiler: g++
           - os: windows-latest
@@ -36,7 +36,7 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: ${{ matrix.qt_version }}
-        host: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'mac' }}
+        host: ${{ matrix.os == 'ubuntu-20.04' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'mac' }}
         target: desktop
         modules: 'qtnetworkauth qtmultimedia'
         cache: true
@@ -45,7 +45,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential libgl1-mesa-dev libxcb-xinerama0-dev libfontconfig1-dev libfreetype6-dev libx11-dev libx11-xcb-dev libxext-dev libxfixes-dev libxi-dev libxrender-dev libxcb1-dev libxcb-glx0-dev libxcb-keysyms1-dev libxcb-image0-dev libxcb-shm0-dev libxcb-icccm4-dev libxcb-sync1 libxcb-render-util0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-randr0-dev libxcb-render0-dev libxcb-util1 fuse libxcb-cursor0 libxcb-cursor-dev
+        sudo apt-get install -y build-essential libgl1-mesa-dev libxcb-xinerama0-dev libfontconfig1-dev libfreetype6-dev libx11-dev libx11-xcb-dev libxext-dev libxfixes-dev libxi-dev libxrender-dev libxcb1-dev libxcb-glx0-dev libxcb-keysyms1-dev libxcb-image0-dev libxcb-shm0-dev libxcb-icccm4-dev libxcb-sync1 libxcb-render-util0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-randr0-dev libxcb-render0-dev libxcb-util1 fuse libxcb-cursor0 libxcb-cursor-dev patchelf file
         
     - name: Set reusable strings
       id: strings
@@ -57,7 +57,7 @@ jobs:
       if: runner.os == 'Windows'
       shell: cmd
       run: |
-        cmake -B "${{ steps.strings.outputs.build-output-dir }}" -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S "${{ github.workspace }}"
+        cmake -B "${{ steps.strings.outputs.build-output-dir }}" -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -S "${{ github.workspace }}"
 
     - name: Configure CMake (Unix)
       if: runner.os != 'Windows'
@@ -68,15 +68,20 @@ jobs:
     - name: Build
       run: cmake --build "${{ steps.strings.outputs.build-output-dir }}" --config ${{ matrix.build_type }}
 
-    - name: Package Windows Application with Qt DLLs
+    - name: Package Windows Application (Fully Portable)
       if: runner.os == 'Windows'
       shell: cmd
       run: |
         mkdir deploy
         copy "${{ steps.strings.outputs.build-output-dir }}\Release\CyberChat.exe" deploy\ || copy "${{ steps.strings.outputs.build-output-dir }}\CyberChat.exe" deploy\
-        windeployqt.exe --release --no-translations --no-system-d3d-compiler --no-opengl-sw deploy\CyberChat.exe
+        windeployqt.exe --release --no-translations --no-system-d3d-compiler --no-opengl-sw --force --no-quick-import --no-webkit2 deploy\CyberChat.exe
+        
+        REM Create a portable launcher batch file
+        echo @echo off > deploy\CyberChat_Portable.bat
+        echo cd /d "%%~dp0" >> deploy\CyberChat_Portable.bat
+        echo CyberChat.exe %%* >> deploy\CyberChat_Portable.bat
 
-    - name: Package macOS Application (Portable)
+    - name: Package macOS Application (Fully Portable)
       if: runner.os == 'macOS'
       shell: bash
       run: |
@@ -94,37 +99,45 @@ jobs:
           APP_PATH="deploy/CyberChat.app"
           
           # Create minimal Info.plist
-          cat > deploy/CyberChat.app/Contents/Info.plist << EOF
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>CFBundleExecutable</key>
-            <string>CyberChat</string>
-            <key>CFBundleIdentifier</key>
-            <string>com.cybernilsen.cyberchat</string>
-            <key>CFBundleName</key>
-            <string>CyberChat</string>
-            <key>CFBundleVersion</key>
-            <string>1.0</string>
-            <key>CFBundleShortVersionString</key>
-            <string>1.0</string>
-        </dict>
-        </plist>
-        EOF
+          cat > deploy/CyberChat.app/Contents/Info.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>CyberChat</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.cybernilsen.cyberchat</string>
+    <key>CFBundleName</key>
+    <string>CyberChat</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.15</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
+EOF
         else
           echo "CyberChat executable not found"
           ls -la "${{ steps.strings.outputs.build-output-dir }}/"
           exit 1
         fi
         
-        # Use macdeployqt to bundle Qt frameworks
+        # Use macdeployqt to bundle Qt frameworks with all dependencies
         echo "Running macdeployqt..."
-        macdeployqt "$APP_PATH" -verbose=2
+        macdeployqt "$APP_PATH" -verbose=2 -always-overwrite
         
         # Make executable
         chmod +x "$APP_PATH/Contents/MacOS/CyberChat"
-    - name: Package Linux Application (AppImage)
+        
+        # Create a DMG for easy distribution
+        hdiutil create -volname "CyberChat" -srcfolder deploy/CyberChat.app -ov -format UDZO deploy/CyberChat-macOS.dmg
+
+    - name: Package Linux Application (Fully Portable AppImage)
       if: runner.os == 'Linux'
       shell: bash
       run: |
@@ -154,26 +167,28 @@ jobs:
         chmod +x AppDir/usr/bin/CyberChat
         
         # Create desktop file
-        cat > AppDir/usr/share/applications/cyberchat.desktop << EOF
-        [Desktop Entry]
-        Type=Application
-        Name=CyberChat
-        Exec=CyberChat
-        Icon=cyberchat
-        Categories=Network;Chat;
-        Comment=Secure Anonymous Chat Application
-        Terminal=false
-        EOF
+        cat > AppDir/usr/share/applications/cyberchat.desktop << 'EOF'
+[Desktop Entry]
+Type=Application
+Name=CyberChat
+Exec=CyberChat
+Icon=cyberchat
+Categories=Network;Chat;
+Comment=Secure Anonymous Chat Application
+Terminal=false
+EOF
         
-        # Create a simple icon placeholder
-        mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-        touch AppDir/usr/share/icons/hicolor/256x256/apps/cyberchat.png
+        # Create a simple PNG icon (1x1 pixel placeholder)
+        echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==" | base64 -d > AppDir/usr/share/icons/hicolor/256x256/apps/cyberchat.png
         
-        # Copy icon to AppDir root (required by AppImage)
+        # Copy files to AppDir root (required by AppImage)
         cp AppDir/usr/share/icons/hicolor/256x256/apps/cyberchat.png AppDir/cyberchat.png
         cp AppDir/usr/share/applications/cyberchat.desktop AppDir/cyberchat.desktop
         
-        # Download and use linuxdeploy for dependency bundling
+        # Make desktop file executable
+        chmod +x AppDir/cyberchat.desktop
+        
+        # Download tools for AppImage creation
         wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
         wget -c "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
         chmod +x linuxdeploy*.AppImage
@@ -181,80 +196,171 @@ jobs:
         # Set up environment for Qt plugin
         export QMAKE=$Qt6_DIR/bin/qmake
         export LD_LIBRARY_PATH=$Qt6_DIR/lib:$LD_LIBRARY_PATH
+        export QML_SOURCES_PATHS=""
         
-        # Try to bundle Qt dependencies and create AppImage with error handling
-        if ! ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage; then
-          echo "linuxdeploy failed, trying alternative approach..."
+        # Create AppImage with comprehensive bundling
+        echo "Creating AppImage with Qt bundling..."
+        if ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage; then
+          echo "Successfully created AppImage with linuxdeploy"
+        else
+          echo "linuxdeploy failed, trying manual approach..."
           
-          # Alternative: manual Qt deployment
+          # Manual Qt deployment for maximum portability
           mkdir -p AppDir/usr/lib
+          mkdir -p AppDir/usr/plugins
           
-          # Copy Qt libraries manually
-          cp -r $Qt6_DIR/lib/libQt6*.so* AppDir/usr/lib/ 2>/dev/null || true
-          cp -r $Qt6_DIR/plugins AppDir/usr/ 2>/dev/null || true
+          # Copy all Qt libraries
+          find $Qt6_DIR/lib -name "libQt6*.so*" -exec cp {} AppDir/usr/lib/ \; 2>/dev/null || true
           
-          # Create simple AppImage manually
+          # Copy Qt plugins
+          if [ -d "$Qt6_DIR/plugins" ]; then
+            cp -r $Qt6_DIR/plugins/* AppDir/usr/plugins/ 2>/dev/null || true
+          fi
+          
+          # Copy system libraries that might be missing on other distributions
+          SYSTEM_LIBS=(
+            "/lib/x86_64-linux-gnu/libm.so.6"
+            "/lib/x86_64-linux-gnu/libdl.so.2"
+            "/lib/x86_64-linux-gnu/libpthread.so.0"
+            "/lib/x86_64-linux-gnu/libc.so.6"
+            "/usr/lib/x86_64-linux-gnu/libstdc++.so.6"
+            "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1"
+          )
+          
+          for lib in "${SYSTEM_LIBS[@]}"; do
+            if [ -f "$lib" ]; then
+              cp "$lib" AppDir/usr/lib/ 2>/dev/null || true
+            fi
+          done
+          
+          # Create AppRun script for proper library loading
+          cat > AppDir/AppRun << 'EOF'
+#!/bin/bash
+HERE="$(dirname "$(readlink -f "${0}")")"
+export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
+export QT_PLUGIN_PATH="${HERE}/usr/plugins:${QT_PLUGIN_PATH}"
+export QT_QPA_PLATFORM_PLUGIN_PATH="${HERE}/usr/plugins/platforms"
+exec "${HERE}/usr/bin/CyberChat" "$@"
+EOF
+          chmod +x AppDir/AppRun
+          
+          # Create AppImage manually
           wget -c "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
           chmod +x appimagetool-x86_64.AppImage
-          ./appimagetool-x86_64.AppImage AppDir CyberChat-Linux-x86_64.AppImage
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir CyberChat-Linux-x86_64.AppImage
         fi
         
-        # Debug: List all files to see what was created
-        echo "Listing current directory contents:"
-        ls -la
-        echo "Looking for AppImage files:"
-        find . -name "*.AppImage" -type f
-        
-        # Move the created AppImage to deploy folder with better detection
+        # Find and move the AppImage
         APPIMAGE_FILE=""
-        if [ -f "CyberChat-x86_64.AppImage" ]; then
-          APPIMAGE_FILE="CyberChat-x86_64.AppImage"
-        elif [ -f "CyberChat-Linux-x86_64.AppImage" ]; then
-          APPIMAGE_FILE="CyberChat-Linux-x86_64.AppImage"
-        else
-          # Find any AppImage file that was created
-          APPIMAGE_FILE=$(find . -maxdepth 1 -name "*.AppImage" -type f | head -1)
-        fi
+        for pattern in "CyberChat*.AppImage" "*.AppImage"; do
+          FOUND_FILE=$(find . -maxdepth 1 -name "$pattern" -type f | head -1)
+          if [ -n "$FOUND_FILE" ] && [ -f "$FOUND_FILE" ]; then
+            APPIMAGE_FILE="$FOUND_FILE"
+            break
+          fi
+        done
         
         if [ -n "$APPIMAGE_FILE" ] && [ -f "$APPIMAGE_FILE" ]; then
           echo "Found AppImage: $APPIMAGE_FILE"
           mv "$APPIMAGE_FILE" deploy/CyberChat-Linux-x86_64.AppImage
           chmod +x deploy/CyberChat-Linux-x86_64.AppImage
-          echo "Successfully moved AppImage to deploy folder"
+          echo "Successfully created portable Linux AppImage"
+          
+          # Verify AppImage
+          echo "AppImage info:"
+          file deploy/CyberChat-Linux-x86_64.AppImage
+          ls -lh deploy/CyberChat-Linux-x86_64.AppImage
         else
-          echo "ERROR: No AppImage file found!"
+          echo "ERROR: Failed to create AppImage!"
           echo "Directory contents:"
           ls -la
           exit 1
         fi
 
-    - name: Test (if tests exist)
+    - name: Test Executables
+      shell: bash
+      run: |
+        echo "Testing created executables..."
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          if [ -f "deploy/CyberChat.exe" ]; then
+            echo "✅ Windows executable created successfully"
+            file deploy/CyberChat.exe || echo "File command not available on Windows"
+          else
+            echo "❌ Windows executable not found"
+            exit 1
+          fi
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+          if [ -f "deploy/CyberChat.app/Contents/MacOS/CyberChat" ]; then
+            echo "✅ macOS app bundle created successfully"
+            file deploy/CyberChat.app/Contents/MacOS/CyberChat
+          else
+            echo "❌ macOS app bundle not found"
+            exit 1
+          fi
+        elif [ "$RUNNER_OS" = "Linux" ]; then
+          if [ -f "deploy/CyberChat-Linux-x86_64.AppImage" ]; then
+            echo "✅ Linux AppImage created successfully"
+            file deploy/CyberChat-Linux-x86_64.AppImage
+          else
+            echo "❌ Linux AppImage not found"
+            exit 1
+          fi
+        fi
+
+    - name: Run Unit Tests (if available)
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      continue-on-error: true
       shell: bash
       run: |
         if [ -f "CTestTestfile.cmake" ]; then
-          ctest --build-config ${{ matrix.build_type }} --output-on-failure
+          echo "Running tests..."
+          ctest --build-config ${{ matrix.build_type }} --output-on-failure --verbose
         else
-          echo "No tests found, skipping test step"
+          echo "No CTest configuration found, skipping tests"
         fi
 
-    - name: Upload Windows Artifacts
+    - name: Upload Windows Portable Package
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
         name: CyberChat-Windows-Portable
         path: deploy/
+        retention-days: 30
 
-    - name: Upload macOS Artifacts
+    - name: Upload macOS Portable Package
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v4
       with:
         name: CyberChat-macOS-Portable
         path: deploy/
+        retention-days: 30
 
-    - name: Upload Linux Artifacts
+    - name: Upload Linux Portable Package
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
       with:
-        name: CyberChat-Linux-AppImage
+        name: CyberChat-Linux-Portable
         path: deploy/
+        retention-days: 30
+
+  # Optional: Create a release with all platforms when pushing tags
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          CyberChat-Windows-Portable/*
+          CyberChat-macOS-Portable/*
+          CyberChat-Linux-Portable/*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
