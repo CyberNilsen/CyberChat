@@ -68,18 +68,99 @@ jobs:
     - name: Build
       run: cmake --build "${{ steps.strings.outputs.build-output-dir }}" --config ${{ matrix.build_type }}
 
-    - name: Package Windows Application (Fully Portable)
+    - name: Download and Install VC++ Redistributables
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        # Download Microsoft Visual C++ Redistributable
+        $vcRedistUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        $vcRedistPath = "$env:TEMP\vc_redist.x64.exe"
+        
+        Write-Host "Downloading VC++ Redistributable..."
+        Invoke-WebRequest -Uri $vcRedistUrl -OutFile $vcRedistPath
+        
+        # Extract redistributable DLLs without installing
+        $extractPath = "$env:TEMP\vcredist_extract"
+        New-Item -ItemType Directory -Force -Path $extractPath
+        
+        # Use 7zip or expand to extract
+        & $vcRedistPath /extract:$extractPath /quiet
+        
+        # Find and copy the DLLs
+        $dllPath = Get-ChildItem -Path $extractPath -Recurse -Name "*.dll" | Select-Object -First 1 | Split-Path -Parent
+        if ($dllPath) {
+            Write-Host "Found DLLs at: $dllPath"
+            $fullDllPath = Join-Path $extractPath $dllPath
+            Copy-Item -Path "$fullDllPath\*.dll" -Destination "." -Force
+        }
+
+    - name: Package Windows Application (Fully Portable with Runtime DLLs)
       if: runner.os == 'Windows'
       shell: cmd
       run: |
         mkdir deploy
         copy "${{ steps.strings.outputs.build-output-dir }}\Release\CyberChat.exe" deploy\ || copy "${{ steps.strings.outputs.build-output-dir }}\CyberChat.exe" deploy\
+        
+        REM Deploy Qt dependencies
         windeployqt.exe --release --no-translations --no-system-d3d-compiler --no-opengl-sw --force --no-quick-import --no-webkit2 deploy\CyberChat.exe
         
-        REM Create a portable launcher batch file
+        REM Copy Visual C++ Runtime DLLs - try multiple locations
+        REM Method 1: From GitHub Actions environment (most reliable)
+        copy "C:\Windows\System32\msvcp140.dll" deploy\ 2>nul
+        copy "C:\Windows\System32\vcruntime140.dll" deploy\ 2>nul
+        copy "C:\Windows\System32\vcruntime140_1.dll" deploy\ 2>nul
+        
+        REM Method 2: From Visual Studio installation
+        for /d %%i in ("C:\Program Files\Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*") do (
+            if exist "%%i\x64\Microsoft.VC143.CRT\msvcp140.dll" (
+                copy "%%i\x64\Microsoft.VC143.CRT\msvcp140.dll" deploy\ 2>nul
+                copy "%%i\x64\Microsoft.VC143.CRT\vcruntime140.dll" deploy\ 2>nul
+                copy "%%i\x64\Microsoft.VC143.CRT\vcruntime140_1.dll" deploy\ 2>nul
+            )
+        )
+        
+        REM Method 3: From any downloaded redistributables
+        copy "msvcp140.dll" deploy\ 2>nul
+        copy "vcruntime140.dll" deploy\ 2>nul
+        copy "vcruntime140_1.dll" deploy\ 2>nul
+        
+        REM Copy Universal CRT (UCRT) DLLs - critical for Windows 7/8 compatibility
+        copy "C:\Windows\System32\ucrtbase.dll" deploy\ 2>nul
+        for %%f in (C:\Windows\System32\api-ms-win-crt-*.dll) do copy "%%f" deploy\ 2>nul
+        
+        REM Copy other potentially needed runtime DLLs
+        copy "C:\Windows\System32\concrt140.dll" deploy\ 2>nul
+        copy "C:\Windows\System32\mfc140.dll" deploy\ 2>nul
+        copy "C:\Windows\System32\mfc140u.dll" deploy\ 2>nul
+        copy "C:\Windows\System32\mfcm140.dll" deploy\ 2>nul
+        copy "C:\Windows\System32\mfcm140u.dll" deploy\ 2>nul
+        copy "C:\Windows\System32\vcamp140.dll" deploy\ 2>nul
+        copy "C:\Windows\System32\vcomp140.dll" deploy\ 2>nul
+        
+        REM Create a portable launcher batch file with proper PATH setup
         echo @echo off > deploy\CyberChat_Portable.bat
         echo cd /d "%%~dp0" >> deploy\CyberChat_Portable.bat
+        echo set PATH=%%~dp0;%%PATH%% >> deploy\CyberChat_Portable.bat
+        echo set QT_PLUGIN_PATH=%%~dp0 >> deploy\CyberChat_Portable.bat
         echo CyberChat.exe %%* >> deploy\CyberChat_Portable.bat
+        
+        REM Create a verification script to check for missing DLLs
+        echo @echo off > deploy\Check_Dependencies.bat
+        echo echo Checking dependencies for CyberChat.exe... >> deploy\Check_Dependencies.bat
+        echo dumpbin /dependents CyberChat.exe ^| findstr /i "\.dll" >> deploy\Check_Dependencies.bat
+        echo pause >> deploy\Check_Dependencies.bat
+        
+        REM List all files in deploy directory for verification
+        echo.
+        echo Files in deploy directory:
+        dir deploy\ /b
+        
+        REM Check if critical runtime DLLs are present
+        echo.
+        echo Critical runtime DLLs status:
+        if exist "deploy\msvcp140.dll" (echo ✓ msvcp140.dll found) else (echo ✗ msvcp140.dll MISSING)
+        if exist "deploy\vcruntime140.dll" (echo ✓ vcruntime140.dll found) else (echo ✗ vcruntime140.dll MISSING)
+        if exist "deploy\ucrtbase.dll" (echo ✓ ucrtbase.dll found) else (echo ✗ ucrtbase.dll MISSING)
 
     - name: Package macOS Application (Fully Portable)
       if: runner.os == 'macOS'
