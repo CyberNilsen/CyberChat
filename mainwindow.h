@@ -106,6 +106,7 @@ private:
     QJsonObject createMessage(const QString& type, const QString& content = "", const QString& username = "");
     QNetworkAccessManager* m_networkManager;
     void getPublicIP();
+    bool m_warningShown;
 
     // Here are methods where i can start/stop server and etc
 

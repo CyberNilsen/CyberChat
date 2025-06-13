@@ -1,21 +1,36 @@
-#include "mainwindow.h"
 #include <QApplication>
-#include <QIcon>
+#include <QStyleFactory>
+#include <QDir>
+#include <QStandardPaths>
+#include <QLoggingCategory>
+
+#include "mainwindow.h"
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
 
-    a.setApplicationName("CyberChat");
-    a.setApplicationVersion("1.0");
-    a.setOrganizationName("CyberNilsen");
-    a.setApplicationDisplayName("CyberChat - Secure Anonymous Messaging");
+    QApplication app(argc, argv);
 
-    a.setWindowIcon(QIcon(":/logo.png"));
+    app.setApplicationName("CyberChat");
+    app.setApplicationVersion("1.0.0");
+    app.setOrganizationName("CyberNilsen");
+    app.setOrganizationDomain("github.com/CyberNilsen/CyberChat");
 
-    MainWindow w;
-    w.show();
+    app.setWindowIcon(QIcon(":/images/CyberChat.png"));
 
-    return a.exec();
+#ifdef Q_OS_WIN
+    app.setStyle(QStyleFactory::create("windowsvista"));
+#elif defined(Q_OS_MAC)
+    app.setStyle(QStyleFactory::create("macintosh"));
+
+    app.setStyle(QStyleFactory::create("fusion"));
+#endif
+
+#ifndef QT_DEBUG
+#endif
+
+    MainWindow window;
+    window.show();
+
+    return app.exec();
 }
-// Here is what happens when we start the program, we initilize the window and show it, we also keep it running when it has started

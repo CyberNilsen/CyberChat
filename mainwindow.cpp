@@ -18,6 +18,8 @@ MainWindow::MainWindow(QWidget *parent)
     , m_clientSocket(nullptr)
     , m_isConnected(false)
     , m_networkManager(new QNetworkAccessManager(this))
+    , m_warningShown(false)
+
 {
     ui->setupUi(this);
 
@@ -406,13 +408,142 @@ QJsonObject MainWindow::createMessage(const QString& type, const QString& conten
 
 void MainWindow::on_actionExit_triggered() { close(); }
 void MainWindow::on_actionNew_Connection_triggered() {}
-void MainWindow::on_connectButton_clicked() {}
-void MainWindow::on_disconnectButton_clicked() {}
-void MainWindow::on_sendButton_clicked() {}
-void MainWindow::on_messageLineEdit_returnPressed() { on_sendButton_clicked(); }
-void MainWindow::onConnectedToServer() {}
-void MainWindow::onDisconnectedFromServer() {}
-void MainWindow::onServerDataReceived() {}
-void MainWindow::onSocketError(QAbstractSocket::SocketError error) {}
-void MainWindow::connectToServer() {}
-void MainWindow::disconnectFromServer() {}
+void MainWindow::on_connectButton_clicked()
+{
+    connectToServer();
+}
+
+// Here is what happens when the connect button is pressed. Then it calls upon the connect to server method
+
+void MainWindow::connectToServer()
+{
+    if (m_clientSocket) {
+        disconnectFromServer();
+    }
+
+    QString serverIP = ui->ipLineEdit->text().trimmed();
+    quint16 port = ui->portLineEdit->text().toUInt();
+    m_username = ui->usernameLineEdit->text().trimmed();
+
+    if (serverIP.isEmpty() || port == 0 || m_username.isEmpty()) {
+        if (!m_warningShown) {
+            m_warningShown = true;
+            QMessageBox::warning(this, "Input Error", "Please enter a valid IP, port, and username.");
+            m_warningShown = false;
+        }
+        return;
+    }
+
+    // Disable the button to prevent spamming
+    ui->connectButton->setEnabled(false);
+
+    m_clientSocket = new QTcpSocket(this);
+    connect(m_clientSocket, &QTcpSocket::connected, this, &MainWindow::onConnectedToServer);
+    connect(m_clientSocket, &QTcpSocket::disconnected, this, &MainWindow::onDisconnectedFromServer);
+    connect(m_clientSocket, &QTcpSocket::readyRead, this, &MainWindow::onServerDataReceived);
+    connect(m_clientSocket, QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::errorOccurred),
+            this, &MainWindow::onSocketError);
+
+    m_clientSocket->connectToHost(serverIP, port);
+    addChatMessage("Connecting to server...");
+}
+
+
+// Here is the connectToServer method. Here it essentially connects to the server.
+
+void MainWindow::on_disconnectButton_clicked()
+{
+    disconnectFromServer();
+}
+
+void MainWindow::on_sendButton_clicked()
+{
+    if (!m_clientSocket || !m_isConnected) return;
+
+    QString messageText = ui->messageLineEdit->text().trimmed();
+    if (messageText.isEmpty()) return;
+
+    QJsonObject message = createMessage("message", messageText, m_username);
+    QJsonDocument doc(message);
+    m_clientSocket->write(doc.toJson(QJsonDocument::Compact));
+
+    ui->messageLineEdit->clear();
+}
+
+void MainWindow::on_messageLineEdit_returnPressed()
+{
+    if (ui->sendButton->isEnabled())
+        on_sendButton_clicked();
+}
+
+
+void MainWindow::onConnectedToServer()
+{
+    m_isConnected = true;
+
+    ui->connectButton->setEnabled(false);
+
+    updateUI();
+    addChatMessage("Connected to server.");
+
+    QJsonObject joinMessage = createMessage("join", "", m_username);
+    QJsonDocument doc(joinMessage);
+    m_clientSocket->write(doc.toJson(QJsonDocument::Compact));
+}
+
+void MainWindow::onDisconnectedFromServer()
+{
+    m_isConnected = false;
+    m_clientSocket->deleteLater();
+    m_clientSocket = nullptr;
+    updateUI();
+    addChatMessage("Disconnected from server.");
+}
+
+void MainWindow::onServerDataReceived()
+{
+    QByteArray data = m_clientSocket->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    QJsonObject message = doc.object();
+
+    QString type = message["type"].toString();
+    QString content = message["content"].toString();
+    QString username = message["username"].toString();
+
+    if (type == "user_joined") {
+        addChatMessage(QString("%1 joined the chat.").arg(username));
+    } else if (type == "user_left") {
+        addChatMessage(QString("%1 left the chat.").arg(username));
+    } else if (type == "message") {
+        addChatMessage(QString("[%1]: %2").arg(username, content));
+    } else if (type == "users_list") {
+        ui->usersListWidget->clear();
+        QJsonArray users = message["users"].toArray();
+        for (const QJsonValue& user : users) {
+            ui->usersListWidget->addItem(user.toString());
+        }
+    }
+}
+
+void MainWindow::onSocketError(QAbstractSocket::SocketError error)
+{
+    Q_UNUSED(error)
+
+    QMessageBox::critical(this, "Connection Error", m_clientSocket->errorString());
+
+    disconnectFromServer();
+
+    ui->connectButton->setEnabled(true);
+}
+
+void MainWindow::disconnectFromServer()
+{
+    if (m_clientSocket) {
+        m_clientSocket->disconnectFromHost();
+        m_clientSocket->deleteLater();
+        m_clientSocket = nullptr;
+    }
+    m_isConnected = false;
+    updateUI();
+}
+
