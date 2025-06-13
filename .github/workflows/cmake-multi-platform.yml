@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, windows-latest, macos-latest]  # Use older Ubuntu for better compatibility
+        os: [ubuntu-20.04, windows-latest, macos-latest]
         build_type: [Release]
         qt_version: ['6.5.3']
         include:
@@ -181,27 +181,27 @@ jobs:
           
           # Create minimal Info.plist
           cat > deploy/CyberChat.app/Contents/Info.plist << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>CyberChat</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.cybernilsen.cyberchat</string>
-    <key>CFBundleName</key>
-    <string>CyberChat</string>
-    <key>CFBundleVersion</key>
-    <string>1.0</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>10.15</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-</dict>
-</plist>
-EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>CyberChat</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.cybernilsen.cyberchat</string>
+            <key>CFBundleName</key>
+            <string>CyberChat</string>
+            <key>CFBundleVersion</key>
+            <string>1.0</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.15</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+        </dict>
+        </plist>
+        EOF
         else
           echo "CyberChat executable not found"
           ls -la "${{ steps.strings.outputs.build-output-dir }}/"
@@ -249,15 +249,15 @@ EOF
         
         # Create desktop file
         cat > AppDir/usr/share/applications/cyberchat.desktop << 'EOF'
-[Desktop Entry]
-Type=Application
-Name=CyberChat
-Exec=CyberChat
-Icon=cyberchat
-Categories=Network;Chat;
-Comment=Secure Anonymous Chat Application
-Terminal=false
-EOF
+        [Desktop Entry]
+        Type=Application
+        Name=CyberChat
+        Exec=CyberChat
+        Icon=cyberchat
+        Categories=Network;Chat;
+        Comment=Secure Anonymous Chat Application
+        Terminal=false
+        EOF
         
         # Create a simple PNG icon (1x1 pixel placeholder)
         echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==" | base64 -d > AppDir/usr/share/icons/hicolor/256x256/apps/cyberchat.png
@@ -316,13 +316,13 @@ EOF
           
           # Create AppRun script for proper library loading
           cat > AppDir/AppRun << 'EOF'
-#!/bin/bash
-HERE="$(dirname "$(readlink -f "${0}")")"
-export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
-export QT_PLUGIN_PATH="${HERE}/usr/plugins:${QT_PLUGIN_PATH}"
-export QT_QPA_PLATFORM_PLUGIN_PATH="${HERE}/usr/plugins/platforms"
-exec "${HERE}/usr/bin/CyberChat" "$@"
-EOF
+        #!/bin/bash
+        HERE="$(dirname "$(readlink -f "${0}")")"
+        export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
+        export QT_PLUGIN_PATH="${HERE}/usr/plugins:${QT_PLUGIN_PATH}"
+        export QT_QPA_PLATFORM_PLUGIN_PATH="${HERE}/usr/plugins/platforms"
+        exec "${HERE}/usr/bin/CyberChat" "$@"
+        EOF
           chmod +x AppDir/AppRun
           
           # Create AppImage manually
