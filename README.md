@@ -18,7 +18,7 @@ CyberChat is an open-source, privacy-focused chat application designed for secur
 - 
 ## 🛠️ Technology Stack
 - Language: C++
-- UI Framework: Qt 6.9.1
+- UI Framework: Qt 6.5.3
 - IDE: Qt Creator
 - Build System: CMake
 - License: MIT (Open Source)
