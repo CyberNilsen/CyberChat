@@ -1,8 +1,8 @@
-name: CMake Qt Cross-Platform Build for CyberChat
+name: CyberChat Cross-Platform Build
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
@@ -10,149 +10,207 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
-
+    
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        build_type: [Release]
-        qt_version: ['6.9.1']
         include:
-          - os: ubuntu-latest
-            c_compiler: gcc
-            cpp_compiler: g++
           - os: windows-latest
-            c_compiler: cl
-            cpp_compiler: cl
+            qt_version: '6.5.3'
+            cmake_generator: 'Visual Studio 17 2022'
+            artifact_name: 'CyberChat-Windows-x64'
+            
+          - os: ubuntu-latest
+            qt_version: '6.5.3'
+            cmake_generator: 'Unix Makefiles'
+            artifact_name: 'CyberChat-Linux-x64'
+            
           - os: macos-latest
-            c_compiler: clang
-            cpp_compiler: clang++
+            qt_version: '6.5.3'
+            cmake_generator: 'Unix Makefiles'
+            artifact_name: 'CyberChat-macOS-x64'
 
     steps:
-    - name: Checkout code
+    - name: Checkout Repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
-    - name: Install Qt
+    - name: Setup Qt
       uses: jurplel/install-qt-action@v3
       with:
         version: ${{ matrix.qt_version }}
-        host: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'mac' }}
-        target: desktop
+        host: ${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'mac' }}
+        target: 'desktop'
+        arch: ${{ runner.os == 'Windows' && 'win64_msvc2019_64' || runner.os == 'Linux' && 'gcc_64' || 'clang_64' }}
         modules: 'qtnetworkauth'
+        tools: 'tools_cmake'
         cache: true
+        cache-key-prefix: ${{ runner.os }}-Qt-Cache
+        setup-python: 'false'
 
-    - name: Install Linux dependencies
+    - name: Install Linux Dependencies
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential libgl1-mesa-dev libxcb-xinerama0-dev libfontconfig1-dev libfreetype6-dev libx11-dev libx11-xcb-dev libxext-dev libxfixes-dev libxi-dev libxrender-dev libxcb1-dev libxcb-glx0-dev libxcb-keysyms1-dev libxcb-image0-dev libxcb-shm0-dev libxcb-icccm4-dev libxcb-sync1 libxcb-render-util0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-randr0-dev libxcb-render0-dev libxcb-util1 fuse libxcb-cursor0 libxcb-cursor-dev
+        sudo apt-get install -y \
+          build-essential \
+          libgl1-mesa-dev \
+          libglib2.0-dev \
+          libpulse-dev \
+          libnss3-dev \
+          libxcomposite-dev \
+          libxcursor-dev \
+          libxdamage-dev \
+          libxrandr-dev \
+          libxtst-dev \
+          libxss-dev \
+          libasound2-dev \
+          libwayland-dev \
+          libdrm-dev \
+          libxkbcommon-dev \
+          libatspi2.0-dev \
+          fuse \
+          file
 
-    - name: Set output path
-      id: strings
-      shell: bash
-      run: echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-
-    - name: Configure CMake (Windows)
+    - name: Setup MSVC (Windows)
       if: runner.os == 'Windows'
-      shell: cmd
-      run: |
-        cmake -B ${{ steps.strings.outputs['build-output-dir'] }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S ${{ github.workspace }}
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
 
-    - name: Configure CMake (Unix)
-      if: runner.os != 'Windows'
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -G "${{ matrix.cmake_generator }}" \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=install \
+          ${{ runner.os == 'Windows' && '-A x64' || '' }}
+
+    - name: Build Project
+      run: |
+        cmake --build build --config Release --parallel 4
+
+    - name: Create Deployment Directory
+      run: |
+        cmake --install build --config Release
+
+    - name: Deploy Qt (Windows)
+      if: runner.os == 'Windows'
       shell: bash
       run: |
-        cmake -B ${{ steps.strings.outputs['build-output-dir'] }} \
-              -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
-              -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
-              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-              -S ${{ github.workspace }}
+        mkdir -p deploy
+        cp build/Release/CyberChat.exe deploy/ || cp build/CyberChat.exe deploy/
+        windeployqt.exe --release --no-translations --no-system-d3d-compiler --no-opengl-sw deploy/CyberChat.exe
 
-    - name: Build
-      run: cmake --build ${{ steps.strings.outputs['build-output-dir'] }} --config ${{ matrix.build_type }}
-
-    - name: Package for Windows
-      if: runner.os == 'Windows'
-      shell: cmd
-      run: |
-        mkdir deploy
-        copy "${{ steps.strings.outputs['build-output-dir'] }}\${{ matrix.build_type }}\CyberChat.exe" deploy\
-        windeployqt.exe --release --no-translations deploy\CyberChat.exe
-
-    - name: Package for macOS
+    - name: Deploy Qt (macOS)
       if: runner.os == 'macOS'
-      shell: bash
       run: |
-        mkdir -p deploy/CyberChat.app/Contents/MacOS
-        cp "${{ steps.strings.outputs['build-output-dir'] }}/Release/CyberChat" deploy/CyberChat.app/Contents/MacOS/
-        cat > deploy/CyberChat.app/Contents/Info.plist <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleExecutable</key>
-  <string>CyberChat</string>
-  <key>CFBundleIdentifier</key>
-  <string>com.cybernilsen.cyberchat</string>
-  <key>CFBundleName</key>
-  <string>CyberChat</string>
-  <key>CFBundleVersion</key>
-  <string>1.0</string>
-  <key>CFBundleShortVersionString</key>
-  <string>1.0</string>
-</dict>
-</plist>
-EOF
-        macdeployqt deploy/CyberChat.app
-
-    - name: Package for Linux (AppImage)
+        mkdir -p deploy
+        if [ -d "build/CyberChat.app" ]; then
+          cp -r build/CyberChat.app deploy/
+        else
+          # Create app bundle manually if needed
+          mkdir -p deploy/CyberChat.app/Contents/MacOS
+          cp build/CyberChat deploy/CyberChat.app/Contents/MacOS/
+          cat > deploy/CyberChat.app/Contents/Info.plist << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>CFBundleExecutable</key>
+          <string>CyberChat</string>
+          <key>CFBundleIdentifier</key>
+          <string>com.cybernilsen.cyberchat</string>
+          <key>CFBundleName</key>
+          <string>CyberChat</string>
+          <key>CFBundleVersion</key>
+          <string>1.0.0</string>
+          <key>CFBundleShortVersionString</key>
+          <string>1.0.0</string>
+          <key>CFBundleInfoDictionaryVersion</key>
+          <string>6.0</string>
+          <key>CFBundlePackageType</key>
+          <string>APPL</string>
+          <key>LSMinimumSystemVersion</key>
+          <string>10.15</string>
+        </dict>
+        </plist>
+        EOF
+        fi
+        macdeployqt deploy/CyberChat.app -dmg
+        
+    - name: Deploy Qt (Linux)
       if: runner.os == 'Linux'
-      shell: bash
       run: |
         mkdir -p AppDir/usr/bin
-        cp "${{ steps.strings.outputs['build-output-dir'] }}/CyberChat" AppDir/usr/bin/
+        cp build/CyberChat AppDir/usr/bin/
         chmod +x AppDir/usr/bin/CyberChat
-
+        
+        # Create desktop entry
         mkdir -p AppDir/usr/share/applications
-        cat > AppDir/usr/share/applications/cyberchat.desktop <<EOF
-[Desktop Entry]
-Type=Application
-Name=CyberChat
-Exec=CyberChat
-Icon=cyberchat
-Categories=Network;Chat;
-EOF
-
+        cat > AppDir/usr/share/applications/cyberchat.desktop << 'EOF'
+        [Desktop Entry]
+        Type=Application
+        Name=CyberChat
+        Exec=CyberChat
+        Icon=cyberchat
+        Categories=Network;Chat;Qt;
+        Comment=Secure Anonymous Chat Application
+        EOF
+        
+        # Create icon (placeholder)
         mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-        touch AppDir/usr/share/icons/hicolor/256x256/apps/cyberchat.png
-        cp AppDir/usr/share/icons/hicolor/256x256/apps/cyberchat.png AppDir/cyberchat.png
-        cp AppDir/usr/share/applications/cyberchat.desktop AppDir/cyberchat.desktop
-
+        # Create a simple PNG icon if you have one, or use a placeholder
+        convert -size 256x256 xc:blue AppDir/usr/share/icons/hicolor/256x256/apps/cyberchat.png 2>/dev/null || touch AppDir/usr/share/icons/hicolor/256x256/apps/cyberchat.png
+        
+        # Copy files for AppImage
+        cp AppDir/usr/share/icons/hicolor/256x256/apps/cyberchat.png AppDir/
+        cp AppDir/usr/share/applications/cyberchat.desktop AppDir/
+        
+        # Download linuxdeploy
         wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
         wget -c "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
-        chmod +x *.AppImage
-
+        chmod +x linuxdeploy*.AppImage
+        
+        # Create AppImage
+        export QMAKE=$Qt6_DIR/bin/qmake
         ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
-        mkdir deploy
+        
+        # Move to deploy directory
+        mkdir -p deploy
         mv CyberChat*.AppImage deploy/CyberChat-Linux-x86_64.AppImage
 
-    - name: Upload Windows Artifact
+    - name: Create Archive (Windows)
       if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v4
-      with:
-        name: CyberChat-Windows
-        path: deploy/
+      shell: bash
+      run: |
+        cd deploy
+        7z a ../CyberChat-Windows-x64.zip ./*
 
-    - name: Upload macOS Artifact
-      if: runner.os == 'macOS'
-      uses: actions/upload-artifact@v4
-      with:
-        name: CyberChat-macOS
-        path: deploy/
-
-    - name: Upload Linux Artifact
+    - name: Create Archive (Linux)
       if: runner.os == 'Linux'
+      run: |
+        cd deploy
+        tar -czf ../CyberChat-Linux-x64.tar.gz ./*
+
+    - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: CyberChat-Linux
-        path: deploy/
+        name: ${{ matrix.artifact_name }}
+        path: |
+          ${{ runner.os == 'Windows' && 'CyberChat-Windows-x64.zip' || '' }}
+          ${{ runner.os == 'Linux' && 'CyberChat-Linux-x64.tar.gz' || '' }}
+          ${{ runner.os == 'macOS' && 'deploy/' || '' }}
+        retention-days: 30
+
+    - name: Upload Release Assets
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ${{ runner.os == 'Windows' && 'CyberChat-Windows-x64.zip' || '' }}
+          ${{ runner.os == 'Linux' && 'CyberChat-Linux-x64.tar.gz' || '' }}
+          ${{ runner.os == 'macOS' && 'deploy/CyberChat.dmg' || '' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
