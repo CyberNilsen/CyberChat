@@ -417,6 +417,11 @@ void MainWindow::on_connectButton_clicked()
 
 void MainWindow::connectToServer()
 {
+    if (m_clientSocket && m_clientSocket->state() != QAbstractSocket::UnconnectedState) {
+        addChatMessage("Already connecting or connected to server.");
+        return;
+    }
+
     if (m_clientSocket) {
         disconnectFromServer();
     }
@@ -428,24 +433,37 @@ void MainWindow::connectToServer()
     if (serverIP.isEmpty() || port == 0 || m_username.isEmpty()) {
         if (!m_warningShown) {
             m_warningShown = true;
-            QMessageBox::warning(this, "Input Error", "Please enter a valid IP, port, and username.");
-            m_warningShown = false;
+            QTimer::singleShot(100, [this]() { m_warningShown = false; });
+            QMessageBox::warning(this, "Input Error", "Please enter a valid IP address, port, and username.");
         }
         return;
     }
 
-    // Disable the button to prevent spamming
+    if (port < 1024 || port > 65535) {
+        QMessageBox::warning(this, "Port Error", "Please enter a port between 1024 and 65535.");
+        return;
+    }
+
     ui->connectButton->setEnabled(false);
+    addChatMessage("Connecting to server...");
 
     m_clientSocket = new QTcpSocket(this);
+
     connect(m_clientSocket, &QTcpSocket::connected, this, &MainWindow::onConnectedToServer);
     connect(m_clientSocket, &QTcpSocket::disconnected, this, &MainWindow::onDisconnectedFromServer);
     connect(m_clientSocket, &QTcpSocket::readyRead, this, &MainWindow::onServerDataReceived);
     connect(m_clientSocket, QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::errorOccurred),
             this, &MainWindow::onSocketError);
 
+    QTimer::singleShot(10000, this, [this]() {
+        if (m_clientSocket && m_clientSocket->state() == QAbstractSocket::ConnectingState) {
+            addChatMessage("Connection timeout. Please check the server address and try again.");
+            disconnectFromServer();
+            ui->connectButton->setEnabled(true);
+        }
+    });
+
     m_clientSocket->connectToHost(serverIP, port);
-    addChatMessage("Connecting to server...");
 }
 
 
@@ -458,92 +476,215 @@ void MainWindow::on_disconnectButton_clicked()
 
 void MainWindow::on_sendButton_clicked()
 {
-    if (!m_clientSocket || !m_isConnected) return;
+    if (!m_clientSocket || !m_isConnected || m_clientSocket->state() != QTcpSocket::ConnectedState) {
+        addChatMessage("Error: Not connected to server.");
+        return;
+    }
 
     QString messageText = ui->messageLineEdit->text().trimmed();
-    if (messageText.isEmpty()) return;
+    if (messageText.isEmpty()) {
+        return;
+    }
 
-    QJsonObject message = createMessage("message", messageText, m_username);
-    QJsonDocument doc(message);
-    m_clientSocket->write(doc.toJson(QJsonDocument::Compact));
+    if (messageText.length() > 1000) {
+        QMessageBox::warning(this, "Message Too Long", "Please keep messages under 1000 characters.");
+        return;
+    }
 
-    ui->messageLineEdit->clear();
+    try {
+        QJsonObject message = createMessage("message", messageText, m_username);
+        QJsonDocument doc(message);
+        QByteArray data = doc.toJson(QJsonDocument::Compact);
+
+        qint64 bytesWritten = m_clientSocket->write(data);
+        if (bytesWritten == -1) {
+            addChatMessage("Error: Failed to send message.");
+            return;
+        }
+
+        m_clientSocket->flush();
+        ui->messageLineEdit->clear();
+
+    } catch (const std::exception& e) {
+        addChatMessage("Error: Failed to create message.");
+    }
 }
 
 void MainWindow::on_messageLineEdit_returnPressed()
 {
-    if (ui->sendButton->isEnabled())
+    if (ui->sendButton->isEnabled() && m_isConnected) {
         on_sendButton_clicked();
+    }
 }
 
 
 void MainWindow::onConnectedToServer()
 {
+    if (!m_clientSocket) {
+        addChatMessage("Error: Lost connection during handshake.");
+        ui->connectButton->setEnabled(true);
+        return;
+    }
+
     m_isConnected = true;
-
-    ui->connectButton->setEnabled(false);
-
     updateUI();
-    addChatMessage("Connected to server.");
+    addChatMessage("Connected to server successfully.");
 
-    QJsonObject joinMessage = createMessage("join", "", m_username);
-    QJsonDocument doc(joinMessage);
-    m_clientSocket->write(doc.toJson(QJsonDocument::Compact));
+    try {
+        QJsonObject joinMessage = createMessage("join", "", m_username);
+        QJsonDocument doc(joinMessage);
+        QByteArray data = doc.toJson(QJsonDocument::Compact);
+
+        if (m_clientSocket->state() == QTcpSocket::ConnectedState) {
+            qint64 bytesWritten = m_clientSocket->write(data);
+            if (bytesWritten == -1) {
+                addChatMessage("Error: Failed to send join message.");
+                disconnectFromServer();
+                return;
+            }
+            m_clientSocket->flush();
+        }
+    } catch (const std::exception& e) {
+        addChatMessage("Error: Failed to create join message.");
+        disconnectFromServer();
+    }
 }
 
 void MainWindow::onDisconnectedFromServer()
 {
     m_isConnected = false;
-    m_clientSocket->deleteLater();
-    m_clientSocket = nullptr;
+
+    if (m_clientSocket) {
+        m_clientSocket->deleteLater();
+        m_clientSocket = nullptr;
+    }
+
+    ui->usersListWidget->clear();
+
+    ui->connectButton->setEnabled(true);
+
     updateUI();
     addChatMessage("Disconnected from server.");
 }
 
 void MainWindow::onServerDataReceived()
 {
+    if (!m_clientSocket) return;
+
     QByteArray data = m_clientSocket->readAll();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        addChatMessage("Error: Received invalid data from server.");
+        return;
+    }
+
+    if (!doc.isObject()) {
+        addChatMessage("Error: Received malformed message from server.");
+        return;
+    }
+
     QJsonObject message = doc.object();
+
+    if (!message.contains("type")) {
+        addChatMessage("Error: Received message without type field.");
+        return;
+    }
 
     QString type = message["type"].toString();
     QString content = message["content"].toString();
     QString username = message["username"].toString();
 
-    if (type == "user_joined") {
-        addChatMessage(QString("%1 joined the chat.").arg(username));
-    } else if (type == "user_left") {
-        addChatMessage(QString("%1 left the chat.").arg(username));
-    } else if (type == "message") {
-        addChatMessage(QString("[%1]: %2").arg(username, content));
-    } else if (type == "users_list") {
-        ui->usersListWidget->clear();
-        QJsonArray users = message["users"].toArray();
-        for (const QJsonValue& user : users) {
-            ui->usersListWidget->addItem(user.toString());
+    try {
+        if (type == "user_joined") {
+            if (!username.isEmpty()) {
+                addChatMessage(QString("%1 joined the chat.").arg(username));
+            }
+        } else if (type == "user_left") {
+            if (!username.isEmpty()) {
+                addChatMessage(QString("%1 left the chat.").arg(username));
+            }
+        } else if (type == "message") {
+            if (!username.isEmpty() && !content.isEmpty()) {
+                addChatMessage(QString("[%1]: %2").arg(username, content));
+            }
+        } else if (type == "users_list") {
+            ui->usersListWidget->clear();
+            if (message.contains("users") && message["users"].isArray()) {
+                QJsonArray users = message["users"].toArray();
+                for (const QJsonValue& user : users) {
+                    if (user.isString() && !user.toString().isEmpty()) {
+                        ui->usersListWidget->addItem(user.toString());
+                    }
+                }
+            }
+        } else {
+
+            addChatMessage(QString("Received unknown message type: %1").arg(type));
         }
+    } catch (const std::exception& e) {
+        addChatMessage("Error processing server message.");
     }
 }
 
 void MainWindow::onSocketError(QAbstractSocket::SocketError error)
 {
-    Q_UNUSED(error)
+    QString errorMessage;
 
-    QMessageBox::critical(this, "Connection Error", m_clientSocket->errorString());
+    switch (error) {
+    case QAbstractSocket::ConnectionRefusedError:
+        errorMessage = "Connection refused. Check if server is running.";
+        break;
+    case QAbstractSocket::RemoteHostClosedError:
+        errorMessage = "Server closed the connection.";
+        break;
+    case QAbstractSocket::HostNotFoundError:
+        errorMessage = "Host not found. Check the IP address.";
+        break;
+    case QAbstractSocket::SocketTimeoutError:
+        errorMessage = "Connection timed out.";
+        break;
+    case QAbstractSocket::NetworkError:
+        errorMessage = "Network error occurred.";
+        break;
+    case QAbstractSocket::SocketAccessError:
+        errorMessage = "Socket access error. Check permissions.";
+        break;
+    default:
+        if (m_clientSocket) {
+            errorMessage = m_clientSocket->errorString();
+        } else {
+            errorMessage = "Unknown socket error occurred.";
+        }
+        break;
+    }
+
+    addChatMessage(QString("Connection Error: %1").arg(errorMessage));
 
     disconnectFromServer();
-
-    ui->connectButton->setEnabled(true);
 }
 
 void MainWindow::disconnectFromServer()
 {
     if (m_clientSocket) {
-        m_clientSocket->disconnectFromHost();
+
+        if (m_clientSocket->state() == QTcpSocket::ConnectedState) {
+            m_clientSocket->disconnectFromHost();
+
+            if (!m_clientSocket->waitForDisconnected(3000)) {
+                m_clientSocket->abort();
+            }
+        }
+
         m_clientSocket->deleteLater();
         m_clientSocket = nullptr;
     }
+
     m_isConnected = false;
+    ui->usersListWidget->clear();
+    ui->connectButton->setEnabled(true);
     updateUI();
 }
 

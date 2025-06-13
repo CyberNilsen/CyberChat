@@ -107,3 +107,8 @@ install(TARGETS CyberChat
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(CyberChat)
 endif()
+
+if(WIN32 AND MSVC)
+    set_property(TARGET CyberChat PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    # This links the runtime statically, eliminating DLL dependencies
+endif()
