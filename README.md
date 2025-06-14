@@ -72,7 +72,6 @@ We welcome contributions to CyberChat! Please feel free to:
 4. Push to the branch (git push origin feature/amazing-feature)
 5. Open a Pull Request
 
-6. 
 ### Development Guidelines
 - Follow Qt and C++ best practices
 - Maintain code documentation
