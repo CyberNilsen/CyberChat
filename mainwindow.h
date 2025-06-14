@@ -107,6 +107,7 @@ private:
     QNetworkAccessManager* m_networkManager;
     void getPublicIP();
     bool m_warningShown;
+    QTimer* m_connectionTimer;
 
     // Here are methods where i can start/stop server and etc
 

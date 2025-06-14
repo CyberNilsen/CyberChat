@@ -7,6 +7,7 @@
 #include <QMessageBox>
 #include <QDesktopServices>
 #include <QIcon>
+#include <QTimer>
 
 // Includes everything needed for the program to function
 
@@ -19,7 +20,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_isConnected(false)
     , m_networkManager(new QNetworkAccessManager(this))
     , m_warningShown(false)
-
+    , m_connectionTimer(nullptr)
 {
     ui->setupUi(this);
 
@@ -34,6 +35,12 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    if (m_connectionTimer) {
+        m_connectionTimer->stop();
+        delete m_connectionTimer;
+        m_connectionTimer = nullptr;
+    }
+
     if (m_server) {
         stopServer();
     }
@@ -69,7 +76,6 @@ void MainWindow::on_actionStart_server_WAN_triggered()
 
 // If action start server in menu is pressed it calls the method startserver on WAN side
 
-
 void MainWindow::on_actionAbout_triggered()
 {
     QString aboutText =
@@ -99,7 +105,6 @@ void MainWindow::on_actionAbout_triggered()
 
     // Show the dialog and check if a link was clicked
     aboutBox.exec();
-
 }
 
 void MainWindow::startServer(const QString& mode)
@@ -118,7 +123,6 @@ void MainWindow::startServer(const QString& mode)
     if (port == 0) port = 8080;
 
     // Server port
-
 
     QHostAddress bindAddress = QHostAddress::Any;
 
@@ -155,11 +159,8 @@ void MainWindow::startServer(const QString& mode)
         m_server = nullptr;
 
         // If we cant start the server we get a error message and we also stop the server
-
     }
 }
-
-
 
 void MainWindow::getPublicIP()
 {
@@ -190,8 +191,14 @@ void MainWindow::on_actionStop_server_triggered()
 void MainWindow::stopServer()
 {
     if (m_server) {
+        // Disconnect all clients gracefully
         for (const auto& client : m_clients) {
-            client.socket->disconnectFromHost();
+            if (client.socket && client.socket->state() == QTcpSocket::ConnectedState) {
+                client.socket->disconnectFromHost();
+                if (!client.socket->waitForDisconnected(1000)) {
+                    client.socket->abort();
+                }
+            }
         }
         m_clients.clear();
 
@@ -211,7 +218,10 @@ void MainWindow::stopServer()
 
 void MainWindow::onNewConnection()
 {
+    if (!m_server) return;
+
     QTcpSocket* clientSocket = m_server->nextPendingConnection();
+    if (!clientSocket) return;
 
     connect(clientSocket, &QTcpSocket::readyRead, this, &MainWindow::onClientDataReceived);
     connect(clientSocket, &QTcpSocket::disconnected, this, &MainWindow::onClientDisconnected);
@@ -234,20 +244,21 @@ void MainWindow::onClientDisconnected()
     if (!clientSocket) return;
 
     // Find and remove the client
+    QString username;
     for (int i = 0; i < m_clients.size(); ++i) {
         if (m_clients[i].socket == clientSocket) {
-            QString username = m_clients[i].username;
-            if (!username.isEmpty()) {
-                addChatMessage(QString("%1 disconnected").arg(username));
-
-                // Notify other clients
-                QJsonObject message = createMessage("user_left", "", username);
-                broadcastMessage(message, clientSocket);
-            }
-
+            username = m_clients[i].username;
             m_clients.removeAt(i);
             break;
         }
+    }
+
+    if (!username.isEmpty()) {
+        addChatMessage(QString("%1 disconnected").arg(username));
+
+        // Notify other clients
+        QJsonObject message = createMessage("user_left", "", username);
+        broadcastMessage(message, clientSocket);
     }
 
     updateUsersList();
@@ -262,7 +273,17 @@ void MainWindow::onClientDataReceived()
     if (!clientSocket) return;
 
     QByteArray data = clientSocket->readAll();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (data.isEmpty()) return;
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        return; // Ignore invalid JSON
+    }
+
+    if (!doc.isObject()) return;
+
     QJsonObject message = doc.object();
 
     QString type = message["type"].toString();
@@ -270,7 +291,7 @@ void MainWindow::onClientDataReceived()
     QString username = message["username"].toString();
 
     if (type == "join") {
-
+        // Update client username
         for (auto& client : m_clients) {
             if (client.socket == clientSocket) {
                 client.username = username;
@@ -312,8 +333,9 @@ void MainWindow::broadcastMessage(const QJsonObject& message, QTcpSocket* sender
     QByteArray data = doc.toJson(QJsonDocument::Compact);
 
     for (const auto& client : m_clients) {
-        if (client.socket != sender && client.socket->state() == QTcpSocket::ConnectedState) {
+        if (client.socket && client.socket != sender && client.socket->state() == QTcpSocket::ConnectedState) {
             client.socket->write(data);
+            client.socket->flush();
         }
     }
 }
@@ -326,6 +348,7 @@ void MainWindow::sendToClient(QTcpSocket* client, const QJsonObject& message)
         QJsonDocument doc(message);
         QByteArray data = doc.toJson(QJsonDocument::Compact);
         client->write(data);
+        client->flush();
     }
 }
 
@@ -404,6 +427,7 @@ QJsonObject MainWindow::createMessage(const QString& type, const QString& conten
 
 void MainWindow::on_actionExit_triggered() { close(); }
 void MainWindow::on_actionNew_Connection_triggered() {}
+
 void MainWindow::on_connectButton_clicked()
 {
     connectToServer();
@@ -414,10 +438,10 @@ void MainWindow::on_connectButton_clicked()
 void MainWindow::connectToServer()
 {
     if (m_clientSocket && m_clientSocket->state() != QAbstractSocket::UnconnectedState) {
-        addChatMessage("Already connecting or connected to server.");
         return;
     }
 
+    // Clean up existing connection if any
     if (m_clientSocket) {
         disconnectFromServer();
     }
@@ -426,11 +450,15 @@ void MainWindow::connectToServer()
     quint16 port = ui->portLineEdit->text().toUInt();
     m_username = ui->usernameLineEdit->text().trimmed();
 
+    // Validate input - Fixed double message box issue
     if (serverIP.isEmpty() || port == 0 || m_username.isEmpty()) {
         if (!m_warningShown) {
             m_warningShown = true;
-            QTimer::singleShot(100, [this]() { m_warningShown = false; });
             QMessageBox::warning(this, "Input Error", "Please enter a valid IP address, port, and username.");
+            // Reset warning flag after a short delay
+            QTimer::singleShot(500, this, [this]() {
+                m_warningShown = false;
+            });
         }
         return;
     }
@@ -451,17 +479,25 @@ void MainWindow::connectToServer()
     connect(m_clientSocket, QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::errorOccurred),
             this, &MainWindow::onSocketError);
 
-    QTimer::singleShot(10000, this, [this]() {
+    // Clean up old timer if exists
+    if (m_connectionTimer) {
+        m_connectionTimer->stop();
+        delete m_connectionTimer;
+    }
+
+    // Create connection timeout timer
+    m_connectionTimer = new QTimer(this);
+    m_connectionTimer->setSingleShot(true);
+    connect(m_connectionTimer, &QTimer::timeout, this, [this]() {
         if (m_clientSocket && m_clientSocket->state() == QAbstractSocket::ConnectingState) {
             addChatMessage("Connection timeout. Please check the server address and try again.");
             disconnectFromServer();
-            ui->connectButton->setEnabled(true);
         }
     });
+    m_connectionTimer->start(10000); // 10 second timeout
 
     m_clientSocket->connectToHost(serverIP, port);
 }
-
 
 // Here is the connectToServer method. Here it essentially connects to the server.
 
@@ -513,9 +549,12 @@ void MainWindow::on_messageLineEdit_returnPressed()
     }
 }
 
-
 void MainWindow::onConnectedToServer()
 {
+    if (m_connectionTimer) {
+        m_connectionTimer->stop();
+    }
+
     if (!m_clientSocket) {
         addChatMessage("Error: Lost connection during handshake.");
         ui->connectButton->setEnabled(true);
@@ -548,15 +587,20 @@ void MainWindow::onConnectedToServer()
 
 void MainWindow::onDisconnectedFromServer()
 {
+    if (m_connectionTimer) {
+        m_connectionTimer->stop();
+    }
+
     m_isConnected = false;
 
     if (m_clientSocket) {
+
+        disconnect(m_clientSocket, nullptr, this, nullptr);
         m_clientSocket->deleteLater();
         m_clientSocket = nullptr;
     }
 
     ui->usersListWidget->clear();
-
     ui->connectButton->setEnabled(true);
 
     updateUI();
@@ -568,6 +612,7 @@ void MainWindow::onServerDataReceived()
     if (!m_clientSocket) return;
 
     QByteArray data = m_clientSocket->readAll();
+    if (data.isEmpty()) return;
 
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
@@ -617,7 +662,6 @@ void MainWindow::onServerDataReceived()
                 }
             }
         } else {
-
             addChatMessage(QString("Received unknown message type: %1").arg(type));
         }
     } catch (const std::exception& e) {
@@ -627,6 +671,10 @@ void MainWindow::onServerDataReceived()
 
 void MainWindow::onSocketError(QAbstractSocket::SocketError error)
 {
+    if (m_connectionTimer) {
+        m_connectionTimer->stop();
+    }
+
     QString errorMessage;
 
     switch (error) {
@@ -658,17 +706,21 @@ void MainWindow::onSocketError(QAbstractSocket::SocketError error)
     }
 
     addChatMessage(QString("Connection Error: %1").arg(errorMessage));
-
     disconnectFromServer();
 }
 
 void MainWindow::disconnectFromServer()
 {
+    if (m_connectionTimer) {
+        m_connectionTimer->stop();
+    }
+
     if (m_clientSocket) {
+
+        disconnect(m_clientSocket, nullptr, this, nullptr);
 
         if (m_clientSocket->state() == QTcpSocket::ConnectedState) {
             m_clientSocket->disconnectFromHost();
-
             if (!m_clientSocket->waitForDisconnected(3000)) {
                 m_clientSocket->abort();
             }
@@ -682,5 +734,11 @@ void MainWindow::disconnectFromServer()
     ui->usersListWidget->clear();
     ui->connectButton->setEnabled(true);
     updateUI();
-}
 
+    static bool disconnectMessageShown = false;
+    if (!disconnectMessageShown) {
+        disconnectMessageShown = true;
+        // Reset flag after short delay
+        QTimer::singleShot(100, []() { disconnectMessageShown = false; });
+    }
+}
