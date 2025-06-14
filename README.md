@@ -1,7 +1,7 @@
 # CyberChat
 A secure, anonymous chat application built with Qt and C++ for private communication without leaving digital traces.
 
-## Lots of these features are not added yet but are ideas of what the program is gonna have.
+![CyberChat interface](https://github.com/user-attachments/assets/4d6c9d34-ddc8-4199-a083-eeffedfc0160)
 
 ## 🔒 Overview
 CyberChat is an open-source, privacy-focused chat application designed for secure communication across both Local Area Networks (LAN) and Wide Area Networks (WAN). The application prioritizes user anonymity and ensures no persistent chat history is stored locally.
@@ -11,20 +11,19 @@ CyberChat is an open-source, privacy-focused chat application designed for secur
 - Dual Network Support: 
   - LAN mode for local network communication
   - WAN mode for connecting to public IP servers
-- Flexible Architecture: Server can also function as a client
 - No Data Persistence: Messages are not stored locally for maximum privacy
 - Cross-Platform: Built with Qt for multi-platform compatibility
 - Open Source: MIT licensed for transparency and community contribution
 - 
 ## 🛠️ Technology Stack
 - Language: C++
-- UI Framework: Qt 6.9.1
+- UI Framework: Qt 6.5.3
 - IDE: Qt Creator
 - Build System: CMake
 - License: MIT (Open Source)
 - 
 ## 📋 Prerequisites
-- Qt 6.9.1 or higher
+- Qt 6.5.3 or higher
 - Qt Creator IDE
 - MinGW 64-bit compiler (or equivalent C++ compiler)
 - CMake 3.16 or higher
@@ -61,10 +60,9 @@ CyberChat is an open-source, privacy-focused chat application designed for secur
 - Configure one instance as a public server with accessible IP
 - Clients connect using the server's public IP address
 - Secure communication over internet connection
-- 
+- You have to port forward for this the WAN side to work
 ## 🔧 Development Status
 
-⚠️ Early Development: This project is currently in active development. Core features are being implemented and the application is not yet ready for production use.
 ## 🤝 Contributing
 
 We welcome contributions to CyberChat! Please feel free to:
@@ -73,13 +71,14 @@ We welcome contributions to CyberChat! Please feel free to:
 3. Commit your changes (git commit -m 'Add amazing feature')
 4. Push to the branch (git push origin feature/amazing-feature)
 5. Open a Pull Request
+
 6. 
 ### Development Guidelines
 - Follow Qt and C++ best practices
 - Maintain code documentation
 - Test on multiple platforms when possible
 - Prioritize security and privacy in all implementations
-- 
+  
 ## 📄 License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
