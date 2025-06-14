@@ -69,10 +69,6 @@ void MainWindow::on_actionStart_server_WAN_triggered()
 
 // If action start server in menu is pressed it calls the method startserver on WAN side
 
-// 1. First, REMOVE the empty on_actionAbout_triggered() function at line 401
-// Delete this line: void MainWindow::on_actionAbout_triggered() {}
-
-// 2. Replace your current on_actionAbout_triggered() function with this corrected version:
 
 void MainWindow::on_actionAbout_triggered()
 {
