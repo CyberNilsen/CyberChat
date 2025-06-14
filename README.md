@@ -32,9 +32,9 @@ CyberChat is an open-source, privacy-focused chat application designed for secur
 
 ### Building from Source
 1. Clone the repository
-   bash
+   ``bash
    git clone https://github.com/CyberNilsen/CyberChat.git
-   cd CyberChat
+   cd CyberChat``
    
 2. Open in Qt Creator
    - Launch Qt Creator
