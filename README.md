@@ -14,27 +14,27 @@ CyberChat is an open-source, privacy-focused chat application designed for secur
 - No Data Persistence: Messages are not stored locally for maximum privacy
 - Cross-Platform: Built with Qt for multi-platform compatibility
 - Open Source: MIT licensed for transparency and community contribution
-- 
+  
 ## 🛠️ Technology Stack
 - Language: C++
 - UI Framework: Qt 6.5.3
 - IDE: Qt Creator
 - Build System: CMake
 - License: MIT (Open Source)
-- 
+  
 ## 📋 Prerequisites
 - Qt 6.5.3 or higher
 - Qt Creator IDE
 - MinGW 64-bit compiler (or equivalent C++ compiler)
 - CMake 3.16 or higher
-- 
+  
 ## 🚀 Installation
 
 ### Building from Source
 1. Clone the repository
-   ``bash
+   ```bash
    git clone https://github.com/CyberNilsen/CyberChat.git
-   cd CyberChat``
+   cd CyberChat```
    
 2. Open in Qt Creator
    - Launch Qt Creator
@@ -55,7 +55,7 @@ CyberChat is an open-source, privacy-focused chat application designed for secur
 - Launch CyberChat on devices within the same network
 - One device acts as the server, others connect as clients
 - Automatic device discovery on local network
-- 
+  
 ### WAN Mode
 - Configure one instance as a public server with accessible IP
 - Clients connect using the server's public IP address
