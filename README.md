@@ -85,7 +85,6 @@ CyberChat is designed with privacy as a core principle:
 - No chat history persistence
 - Anonymous communication
 - Open source for transparency
-- Encrypted message transmission (planned)
   
 ## 📞 Support
 For questions, issues, or contributions:
